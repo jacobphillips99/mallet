@@ -1,0 +1,20 @@
+# Rate limit configuration for VLM providers and models
+openai:
+  gpt-4-vision-preview:
+    requests_per_minute: 100
+    tokens_per_minute: 100000
+    concurrent_requests: 50
+  gpt-4-turbo-preview:
+    requests_per_minute: 100
+    tokens_per_minute: 100000
+    concurrent_requests: 50
+
+anthropic:
+  claude-3-opus-20240229:
+    requests_per_minute: 100
+    tokens_per_minute: 100000
+    concurrent_requests: 50
+  claude-3-sonnet-20240229:
+    requests_per_minute: 100
+    tokens_per_minute: 100000
+    concurrent_requests: 50 
