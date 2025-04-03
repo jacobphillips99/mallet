@@ -4,7 +4,7 @@ import argparse
 import logging
 import os
 
-from .server import run_server
+from vlm_autoeval_robot_benchmark.server import run_server
 
 def main():
     """Main entry point for the CLI."""

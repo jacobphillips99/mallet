@@ -119,8 +119,8 @@ vlm_autoeval_robot_benchmark/
 To add support for a new VLM provider, update the following:
 
 1. Add API key environment variable to `.env.example`
-2. Add provider detection in `VLM._get_provider_from_model()` method
-3. Add default rate limits in `VLM.DEFAULT_RATE_LIMITS` if needed
+2. Add provider detection in `get_provider_from_model()` method
+3. Add default rate limits in `rate_limits.yaml` if needed
 
 ## License
 

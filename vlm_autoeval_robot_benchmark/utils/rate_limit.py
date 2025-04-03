@@ -5,14 +5,14 @@ import threading
 import asyncio
 from typing import Dict, Optional
 import logging
-
+import typing as t
 from pydantic import BaseModel, Field, validator
 
 logger = logging.getLogger(__name__)
 
 
-class RateLimitConfig(BaseModel):
-    """Configuration for rate limiting."""
+class ModelRateLimitConfig(BaseModel):
+    """Rate limit configuration for a specific model."""
     
     requests_per_minute: int = Field(default=0, ge=0)
     tokens_per_minute: int = Field(default=0, ge=0)
@@ -21,6 +21,18 @@ class RateLimitConfig(BaseModel):
     class Config:
         """Pydantic config."""
         extra = "ignore"
+
+
+class ProviderRateLimits(BaseModel):
+    """Rate limits for all models of a provider."""
+    
+    models: dict[str, ModelRateLimitConfig] = Field(default_factory=dict)
+
+
+class RateLimitConfig(BaseModel):
+    """Top level rate limit configuration for all providers."""
+    
+    providers: dict[str, ProviderRateLimits] = Field(default_factory=dict)
 
 
 class RateLimit:
@@ -32,6 +44,15 @@ class RateLimit:
         self._provider_model_states: Dict[str, Dict[str, Dict]] = {}
         self._locks: Dict[str, Dict[str, threading.Lock]] = {}
         self._semaphores: Dict[str, Dict[str, asyncio.Semaphore]] = {}
+    
+    @property
+    def providers(self) -> list[str]:
+        """Get list of registered providers.
+        
+        Returns:
+            List of provider names that have been registered
+        """
+        return list(self._provider_model_configs.keys())
     
     def register_model(self, provider: str, model: str, config: RateLimitConfig):
         """Register a model with its rate limit configuration.

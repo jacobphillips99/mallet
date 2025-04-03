@@ -6,9 +6,8 @@ API keys are read directly from environment variables:
 
 - `OPENAI_API_KEY`: API key for OpenAI models
 - `ANTHROPIC_API_KEY`: API key for Anthropic models
-- `GOOGLE_API_KEY`: API key for Google models
-- `MISTRAL_API_KEY`: API key for Mistral models
-- `COHERE_API_KEY`: API key for Cohere models
+- `GEMINI_API_KEY`: API key for Google models
+- `HUGGINGFACE_API_KEY`: API key for HuggingFace models
 
 ## Rate Limit Configuration
 
@@ -25,21 +24,11 @@ openai:
   gpt-4-vision-preview:
     requests_per_minute: 100
     tokens_per_minute: 100000
-    concurrent_requests: 50
-  gpt-4-turbo-preview:
-    requests_per_minute: 100
-    tokens_per_minute: 100000
-    concurrent_requests: 50
-
+  
 anthropic:
   claude-3-opus-20240229:
     requests_per_minute: 100
     tokens_per_minute: 100000
-    concurrent_requests: 50
-  claude-3-sonnet-20240229:
-    requests_per_minute: 100
-    tokens_per_minute: 100000
-    concurrent_requests: 50
 ```
 
 If no configuration file is found, the system will use default rate limits defined in the code. 

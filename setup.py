@@ -21,5 +21,5 @@ setup(
             'vlm-autoeval-server=vlm_autoeval_robot_benchmark.__main__:main',
         ],
     },
-    python_requires=">=3.8",
+    python_requires=">=3.10",
 ) 

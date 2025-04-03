@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vlm_autoeval_robot_benchmark"
+version = "0.1.0"
+description = "API-driven VLM server for AutoEval robot benchmarking"
+authors = [
+    { name = "Jacob Phillips", email = "jacob.phillips8905@gmail.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "litellm",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "numpy",
+    "aiohttp",
+    "pyyaml",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true

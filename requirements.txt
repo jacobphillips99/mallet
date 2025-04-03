@@ -1,0 +1,13 @@
+litellm
+fastapi
+uvicorn
+pydantic
+numpy
+aiohttp
+pyyaml
+
+# Dev dependencies
+pytest
+black
+ruff
+mypy

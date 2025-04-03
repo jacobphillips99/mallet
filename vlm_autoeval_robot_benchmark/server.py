@@ -14,8 +14,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import uvicorn
 
-from .models.vlm import VLM, VLMRequest, ImageInput, VLMResponse
-from .utils.rate_limit import rate_limiter, RateLimitConfig
+from vlm_autoeval_robot_benchmark.models.vlm import VLM, VLMRequest, ImageInput, VLMResponse
+from vlm_autoeval_robot_benchmark.utils.rate_limit import rate_limiter, RateLimitConfig
 
 # Configure logging
 logging.basicConfig(
@@ -271,17 +271,17 @@ async def get_stats():
     
     stats = {}
     
-    # Get rate limit stats for registered models
-    for provider, models in vlm_instance.DEFAULT_RATE_LIMITS.items():
-        if provider not in stats:
-            stats[provider] = {}
+    # # Get rate limit stats for registered models
+    # for provider, models in vlm_instance.DEFAULT_RATE_LIMITS.items():
+    #     if provider not in stats:
+    #         stats[provider] = {}
             
-        for model in models:
-            stats[provider][model] = rate_limiter.get_usage_stats(provider, model)
+    #     for model in models:
+    #         stats[provider][model] = rate_limiter.get_usage_stats(provider, model)
     
-    return {
-        "status": "running",
-        "timestamp": datetime.now().isoformat(),
+    # return {
+    #     "status": "running",
+    #     "timestamp": datetime.now().isoformat(),
         "rate_limits": stats
     }
 

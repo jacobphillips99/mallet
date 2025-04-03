@@ -13,10 +13,32 @@ from litellm.utils import get_llm_provider
 import numpy as np
 from pydantic import BaseModel, Field, root_validator
 
-from ..utils.rate_limit import rate_limiter, RateLimitConfig
-from ..config import get_api_keys, load_rate_limits, ApiKeys, RateLimitConfig as ConfigRateLimitConfig
+from vlm_autoeval_robot_benchmark.utils.rate_limit import rate_limiter
+from vlm_autoeval_robot_benchmark.config import load_rate_limits, RateLimitConfig
 
 logger = logging.getLogger(__name__)
+
+
+def get_provider_from_model(model: str) -> str:
+    """Get the provider name from a model name.
+    
+    Args:
+        model: The model name
+        
+    Returns:
+        The provider name
+        
+    Raises:
+        ValueError: If provider cannot be determined
+    """
+    # Fall back to heuristics
+    if model.startswith("gpt-") or "openai" in model:
+        return "openai"
+    if model.startswith("claude-"):
+        return "anthropic"
+    if model.startswith("gemini-"):
+        return "gemini"
+    raise ValueError(f"Could not determine provider for model: {model}")
 
 
 class VLMResponse(BaseModel):
@@ -25,7 +47,7 @@ class VLMResponse(BaseModel):
     text: str
     model: str
     provider: str
-    usage: Dict[str, int] = Field(default_factory=dict)
+    usage: Dict[str, int | Dict[str, int]] = Field(default_factory=dict)
     response_ms: int = 0
     raw_response: Optional[Dict[str, Any]] = None
 
@@ -45,7 +67,7 @@ class VLMRequest(BaseModel):
     max_tokens: int = 1024
     temperature: float = 0.7
     top_p: float = 0.9
-    model: str = "gpt-4-vision-preview"
+    model: str = "gpt-4o-mini"
     provider: Optional[str] = None  # If None, will be derived from model
     system_prompt: Optional[str] = None
     stream: bool = False
@@ -53,69 +75,25 @@ class VLMRequest(BaseModel):
     extra_params: Dict[str, Any] = Field(default_factory=dict)
 
 
-class DefaultRateLimits(BaseModel):
-    """Default rate limits for VLM providers and models."""
-    
-    openai: Dict[str, RateLimitConfig] = Field(default_factory=dict)
-    anthropic: Dict[str, RateLimitConfig] = Field(default_factory=dict)
-    
-    class Config:
-        """Pydantic configuration."""
-        arbitrary_types_allowed = True
-
-
 class VLM:
     """VLM class for handling async parallel requests using litellm."""
     
-    # Default rate limits as a fallback if no YAML config is found
-    DEFAULT_RATE_LIMITS = DefaultRateLimits(
-        openai={
-            "gpt-4-vision-preview": RateLimitConfig(
-                requests_per_minute=100,
-                tokens_per_minute=100000,
-                concurrent_requests=50
-            ),
-            "gpt-4-turbo-preview": RateLimitConfig(
-                requests_per_minute=100,
-                tokens_per_minute=100000,
-                concurrent_requests=50
-            ),
-        },
-        anthropic={
-            "claude-3-opus-20240229": RateLimitConfig(
-                requests_per_minute=100,
-                tokens_per_minute=100000,
-                concurrent_requests=50
-            ),
-            "claude-3-sonnet-20240229": RateLimitConfig(
-                requests_per_minute=100,
-                tokens_per_minute=100000,
-                concurrent_requests=50
-            ),
-        },
-    )
-    
-    def __init__(self, api_keys: Optional[ApiKeys] = None, rate_limits: Optional[ConfigRateLimitConfig] = None):
+    def __init__(self, rate_limits: Optional[RateLimitConfig] = None):
         """Initialize the VLM class.
         
         Args:
-            api_keys: API keys for different providers. If None, will use environment variables.
             rate_limits: Rate limit configurations. If None, will try to load from yaml file.
         """
-        self._setup_api_keys(api_keys or get_api_keys())
         self._setup_rate_limits(rate_limits)
+        self._check_api_keys()
     
-    def _setup_api_keys(self, api_keys: ApiKeys):
-        """Set up API keys for different providers.
-        
-        Args:
-            api_keys: API keys for different providers.
-        """
-        # Set keys via litellm
-        for provider, api_key in api_keys.as_dict().items():
-            os.environ[f"{provider.upper()}_API_KEY"] = api_key
+    def _check_api_keys(self):
+        """Check if API keys are set for the available providers."""
+        for provider in rate_limiter.providers:
+            if f"{provider.upper()}_API_KEY" not in os.environ:
+                raise ValueError(f"API key for {provider} is not set")
     
-    def _setup_rate_limits(self, rate_limits: Optional[ConfigRateLimitConfig]):
+    def _setup_rate_limits(self, rate_limits: Optional[RateLimitConfig]):
         """Set up rate limits for different providers/models.
         
         Args:
@@ -123,74 +101,12 @@ class VLM:
         """
         if rate_limits is None:
             # Try to load from YAML config
-            yaml_config = load_rate_limits()
-            
-            if yaml_config and yaml_config.__root__:
-                # Convert Pydantic config to our RateLimitConfig objects
-                provider_configs = {}
-                for provider, models in yaml_config.items():
-                    provider_configs[provider] = {}
-                    for model, config in models.items():
-                        provider_configs[provider][model] = RateLimitConfig(
-                            requests_per_minute=config.requests_per_minute,
-                            tokens_per_minute=config.tokens_per_minute,
-                            concurrent_requests=config.concurrent_requests
-                        )
-                rate_limits_dict = provider_configs
-            else:
-                # Use default rate limits
-                rate_limits_dict = {}
-                for provider, models in self.DEFAULT_RATE_LIMITS.dict().items():
-                    if not models:
-                        continue
-                    rate_limits_dict[provider] = {}
-                    for model, config in models.items():
-                        rate_limits_dict[provider][model] = RateLimitConfig(**config)
-        else:
-            # Convert Pydantic config to our RateLimitConfig objects
-            rate_limits_dict = {}
-            for provider, models in rate_limits.items():
-                rate_limits_dict[provider] = {}
-                for model, config in models.items():
-                    rate_limits_dict[provider][model] = RateLimitConfig(
-                        requests_per_minute=config.requests_per_minute,
-                        tokens_per_minute=config.tokens_per_minute,
-                        concurrent_requests=config.concurrent_requests
-                    )
+            rate_limits = load_rate_limits()
         
         # Register models with rate limiter
-        for provider, models in rate_limits_dict.items():
-            for model, config in models.items():
-                rate_limiter.register_model(provider, model, config)
-    
-    def _get_provider_from_model(self, model: str) -> str:
-        """Get the provider name from a model name.
-        
-        Args:
-            model: The model name
-            
-        Returns:
-            The provider name
-            
-        Raises:
-            ValueError: If provider cannot be determined
-        """
-        try:
-            return get_llm_provider(model)
-        except:
-            # Fall back to heuristics
-            if model.startswith("gpt-") or "openai" in model:
-                return "openai"
-            if model.startswith("claude-"):
-                return "anthropic"
-            if model.startswith("gemini-"):
-                return "google"
-            if model.startswith("mistral-") or model.startswith("mixtral-"):
-                return "mistral"
-            if model.startswith("command-"):
-                return "cohere"
-            
-            raise ValueError(f"Could not determine provider for model: {model}")
+        for provider, provider_limits in rate_limits.providers.items():
+            for model, model_limits in provider_limits.models.items():
+                rate_limiter.register_model(provider, model, model_limits)
     
     @staticmethod
     def _prepare_images(images: List[ImageInput]) -> List[Dict[str, Any]]:
@@ -263,8 +179,7 @@ class VLM:
             Exception: If the request fails
         """
         # Determine provider if not specified
-        provider = request.provider or self._get_provider_from_model(request.model)
-        
+        provider = request.provider or get_provider_from_model(request.model)
         # Prepare messages
         messages = []
         
@@ -317,7 +232,7 @@ class VLM:
                 stream=request.stream,
                 **request.extra_params
             )
-            
+                        
             # Calculate response time
             response_ms = int((time.time() - start_time) * 1000)
             
@@ -382,5 +297,4 @@ class VLM:
         # Process all requests in parallel
         tasks = [_process_request(i, req) for i, req in enumerate(requests)]
         results = await asyncio.gather(*tasks, return_exceptions=False)
-        
         return results 
