@@ -11,7 +11,7 @@ The action vector is a 7D vector that describes the robot's movement.
 # 3: tilt (pitch)
 # 4: roll (empty in this implementation, as 3 and 4 are treated as equivalent)
 # 5: rotation (yaw)
-# 6: gripper state
+# 6: gripper state (-1 close, 1 open)
 """
 
 """
@@ -56,186 +56,126 @@ workspace_bounds=dict(
 - stuck_conditions: same as failure, but for "stuck" positions like behind the drawer handle
 """
 
+"""
+We're going to focus on two `drawer` tasks: "open the drawer" and "close the drawer"
+"""
+
+"""
+Looking at goal images, we might get an idea of if this is possible from the reset policy for the task we care about. 
+E.g. We're focusing on "open the drawer", so the goal image of "close the drawer" shows the starting position of "open the drawer". At this point, we know
+that we need the hand to go towards the left wall, meaning the Y component should be large and positive.
+"""
+
 import numpy as np
 import asyncio
 from pathlib import Path
 import base64
 import typing as t
 import json
+from PIL import Image 
 
 from vlm_autoeval_robot_benchmark.utils.ecot_primitives.ecot_primitive_movements import describe_move, classify_movement
 from vlm_autoeval_robot_benchmark.utils.ecot_primitives.inverse_ecot_primitive_movements import get_action_from_description
 from vlm_autoeval_robot_benchmark.models.vlm import VLM, VLMRequest, ImageInput
 
-MODEL = "gpt-4o-mini"  # Can be changed to any supported model
+MODEL = "gpt-4o"
+vlm = VLM()
+DELIMITER = "<answer>"
 
-# Mock data for testing
-# In reality, this would be loaded from a dataset
-MOCK_TEST_SAMPLES = [
-    {
-        "image_path": "assets/robot_move_forward.png",  # This is a mock path
-        "action_vector": np.array([1, 0, 0, 0, 0, 0, 0]),  # Move forward
-        "expected_description": "move forward"
-    },
-    {
-        "image_path": "assets/robot_move_left.png",  # This is a mock path
-        "action_vector": np.array([0, 1, 0, 0, 0, 0, 0]),  # Move left
-        "expected_description": "move left" 
-    },
-    {
-        "image_path": "assets/robot_open_gripper.png",  # This is a mock path
-        "action_vector": np.array([0, 0, 0, 0, 0, 0, 1]),  # Open gripper
-        "expected_description": "open gripper"
-    }
-]
+goal_image_path= "assets/auto_eval_goal_images/close the drawer.png"
+with open(goal_image_path, "rb") as f:
+    image_data = f.read()
 
-async def test_vlm_vs_ecot():
-    """
-    Test Scenario 1: Compare VLM image interpretations with ECOT action vector descriptions.
-    For each test sample:
-    1. Feed the image to a VLM to get a text description
-    2. Convert the action vector to a text description using ECOT
-    3. Compare the two descriptions
-    """
-    print("=== Test Scenario 1: VLM(image) vs ECOT(action vector) ===\n")
-    
-    # Initialize VLM
-    vlm = VLM()
-    
-    for i, sample in enumerate(MOCK_TEST_SAMPLES):
-        print(f"Test sample {i+1}:")
-        
-        # Check if image exists (in a real scenario)
-        image_path = Path(sample["image_path"])
-        if not image_path.exists():
-            print(f"  Image not found at {image_path}. Using mock data instead.")
-            # In a real scenario, you would skip this sample or use a default image
-            
-            # Generate ECOT description from action vector
-            ecot_description = describe_move(sample["action_vector"])
-            print(f"  Action vector: {sample['action_vector']}")
-            print(f"  ECOT description: '{ecot_description}'")
-            print(f"  Expected VLM description: '{sample['expected_description']}'")
-            print(f"  (VLM test skipped - using expected description)")
-            print()
-            continue
-        
-        # Real scenario with existing image
-        with open(image_path, "rb") as f:
-            image_data = f.read()
-        
-        # Create VLM request
-        vision_request = VLMRequest(
-            prompt="Describe the robot movement shown in this image using simple directional terms like 'move forward', 'move left', 'tilt up', 'open gripper', etc.",
-            model=MODEL,
-            images=[
-                ImageInput(
-                    data=base64.b64encode(image_data).decode('utf-8'),
-                    mime_type="image/jpeg"
-                )
-            ]
-        )
-        
-        try:
-            # Get description from VLM
-            response = await vlm.generate(vision_request)
-            vlm_description = response.text.strip()
-            
-            # Generate ECOT description from action vector
-            ecot_description = describe_move(sample["action_vector"])
-            
-            print(f"  Action vector: {sample['action_vector']}")
-            print(f"  ECOT description: '{ecot_description}'")
-            print(f"  VLM description: '{vlm_description}'")
-            
-            # Compare descriptions (simple string matching for now)
-            # In a real scenario, you might want to use semantic similarity
-            descriptions_match = vlm_description.lower() == ecot_description.lower()
-            print(f"  Descriptions match: {'✓' if descriptions_match else '✗'}")
-            
-        except Exception as e:
-            print(f"  Error in VLM test: {e}")
-        
-        print()
+environment = """
+You are looking at a wooden desk or table with a black robot arm on it.
+To the left of the robot arm is a drawer with a handle.
+The camera is slightly to the right of the robot. 
 
-def test_action_text_action_roundtrip():
-    """
-    Test Scenario 2: action → text → action round-trip conversion.
-    This tests:
-    1. Converting action vectors to text descriptions using ECOT
-    2. Converting text descriptions back to action vectors using inverse ECOT
-    3. Comparing the original and reconstructed action vectors
-    """
-    print("=== Test Scenario 2: action → text → action round-trip ===\n")
-    
-    # Test cases: Various movement vectors to test
-    test_cases = [
-        np.array([1, 0, 0, 0, 0, 0, 0]),   # Move forward
-        np.array([0, 1, 0, 0, 0, 0, 0]),   # Move left
-        np.array([0, 0, 1, 0, 0, 0, 0]),   # Move up
-        np.array([0, 0, 0, 1, 0, 0, 0]),   # Tilt up
-        np.array([0, 0, 0, 0, 0, 1, 0]),   # Rotate counterclockwise
-        np.array([0, 0, 0, 0, 0, 0, 1]),   # Open gripper
-        np.array([1, 1, 0, 0, 0, 0, 0]),   # Move forward left
-        np.array([1, 0, 0, 0, 0, 0, 1]),   # Move forward, open gripper
-        np.array([0, 0, 0, 0, 0, 0, 0]),   # Stop (no movement)
-        np.array([-1, 0, 0, 0, 0, 0, 0]),  # Move backward
-        np.array([1, -1, 1, 0, 0, -1, -1]) # Complex movement
-    ]
-    
-    for i, original_vec in enumerate(test_cases):
-        print(f"Test case {i+1}:")
-        print(f"  Original vector: {original_vec}")
-        
-        # Convert vector to text description using ECOT
-        description = describe_move(original_vec)
-        print(f"  Text description: '{description}'")
-        
-        # Convert text description back to vector using inverse ECOT
-        # Use custom_magnitude=1.0 to get normalized values
-        reconstructed_action = get_action_from_description(description, custom_magnitude=1.0)
-        reconstructed_vec = np.sign(reconstructed_action)  # Convert to {-1, 0, 1}
-        print(f"  Reconstructed vector: {reconstructed_vec}")
-        
-        # Check if conversion is consistent
-        is_consistent = np.array_equal(original_vec, reconstructed_vec)
-        print(f"  Consistent conversion: {'✓' if is_consistent else '✗'}")
-        
-        if not is_consistent:
-            # Identify which components differ
-            diff_indices = np.where(original_vec != reconstructed_vec)[0]
-            diff_components = [f"component {idx}" for idx in diff_indices]
-            print(f"  Differences in: {', '.join(diff_components)}")
-        
-        print()
+The robot has 7 degrees of freedom:
+#0: X axis, meaning forward/backward, with forwards being towards the front (slightly right in the image) wall
+#1: Y axis, meaning left/right, with left being towards the left wall
+#2: Z axis, meaning up/down, with up being towards the ceiling
+#3: Tilt of the gripper (pitch)
+#4: Roll of the gripper (roll)
+#5: Rotation of the gripper (yaw)
+#6: Gripper, meaning the gripper's opening/closing
+""".strip()
 
-def save_mock_dataset():
-    """
-    Utility function to save the mock dataset to a JSON file.
-    This is helpful if you want to replace it with real data later.
-    """
-    dataset = []
-    for sample in MOCK_TEST_SAMPLES:
-        # Convert numpy array to list for JSON serialization
-        sample_copy = sample.copy()
-        sample_copy["action_vector"] = sample["action_vector"].tolist()
-        dataset.append(sample_copy)
-    
-    with open("mock_robot_movement_dataset.json", "w") as f:
-        json.dump(dataset, f, indent=2)
-    
-    print("Mock dataset saved to mock_robot_movement_dataset.json")
+task = """
+The goal of the robot is to grab the handle of the drawer and open it.
+""".strip()
+
+method = """
+Your job is to output the action that will help the robot complete the task. 
+This will just be the next timestep; you're not trying to accomplish the entire task, just what the robot should be doing in the next second or so. 
+""".strip()
+
+output_format = f"""
+First, describe the scene and the general action you'll need to take on this timestep. 
+When you've thought about the problem, output a {DELIMITER} tag and then start the dictionary output (no need to do ```json or anything like that)
+Then, output a dictionary with 7 elements, each representing a degree of freedom of the robot.
+The keys should be "x", "y", "z", "tilt", "roll", "rotation", and "gripper".
+Choose the values from these options, according to the degrees of freedom described above.
+Note that if the robot does not need to perform an action in a certain degree of freedom, just output None.
+{
+    "x": ["forward", "backward", "None"],
+    "y": ["left", "right", "None"],
+    "z": ["up", "down", "None"],
+    "tilt": ["tilt up", "tilt down", "None"],
+    "roll": ["roll up", "roll down", "None"],
+    "rotation": ["rotate clockwise", "rotate counterclockwise", "None"],
+    "gripper": ["open", "close", "None"]
+}
+
+In addition to each chosen value, also output a reason for why you chose that value.
+The output should look like this example: 
+
+```
+(insert description of scene and action here)
+{DELIMITER}
+{
+    "x": ["forward", "I chose forward because the robot needs to move towards the front/slightly right wall"],
+    "y": ["left", "I chose left because the robot needs to move towards the left wall in order to get closer to the drawer"],
+    ...
+    "gripper": ["None", "I chose None because there is no need for the robot to take any movement with the gripper right now as we are not close to the drawer"]
+}
+```
+
+Below is an image of the scene.
+""".strip()
+
+PROMPT = f"""
+{environment}
+
+{task}
+
+{method}
+
+{output_format}
+"""
 
 async def main():
-    """Main entry point for running all tests."""
-    # Test 1: VLM(image) vs ECOT(action)
-    await test_vlm_vs_ecot()
-    
-    # Test 2: action → text → action round-trip 
-    test_action_text_action_roundtrip()
-    
-    # Optionally save mock dataset
-    # save_mock_dataset()
+    request = VLMRequest(
+        model=MODEL,
+        prompt=PROMPT,
+        images=[
+            ImageInput(
+                data=base64.b64encode(image_data).decode('utf-8'),
+                mime_type="image/png"
+            )
+        ],
+    )
+    response = await vlm.generate(request)
+    try:
+        description, answer = response.text.split(DELIMITER)
+        print(description)
+        answer = json.loads(answer)
+        print(answer)
+    except Exception as e:
+        print(f"Error: {e}")
+        print(response.text)
+    breakpoint()
+    print(response)
 
 if __name__ == "__main__":
     asyncio.run(main())
