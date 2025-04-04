@@ -179,3 +179,6 @@ cython_debug/
 ._*
 .Spotlight-V100
 .Trashes
+
+# ignore the mse-check bridge trajectories
+assets/bridge_v2_10_trajs.npy
