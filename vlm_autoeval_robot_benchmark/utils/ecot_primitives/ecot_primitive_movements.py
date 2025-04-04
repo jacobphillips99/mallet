@@ -111,7 +111,7 @@ def classify_movement(move: np.ndarray, threshold: float = 0.03) -> tuple[str, n
 move_actions: dict[str, list[np.ndarray]] = dict()
 
 
-def get_move_primitives_episode(episode: dict) -> list[tuple[str, np.ndarray]]:
+def get_move_primitives_episode(episode: dict, threshold: float = 0.03) -> list[tuple[str, np.ndarray]]:
     """
     Extracts movement primitives from a full episode.
     
@@ -125,11 +125,11 @@ def get_move_primitives_episode(episode: dict) -> list[tuple[str, np.ndarray]]:
 
     # Extract state and action sequences
     states = np.array([step["observation"]["state"] for step in steps])
-    actions = [step["action"][:3].numpy() for step in steps]
+    actions = [step["action"][:3] for step in steps]
 
     # Create trajectory segments and classify them
     move_trajs = [states[i : i + 4] for i in range(len(states) - 1)]
-    primitives = [classify_movement(move) for move in move_trajs]
+    primitives = [classify_movement(move, threshold) for move in move_trajs]
     primitives.append(primitives[-1])  # Repeat last primitive for final step
 
     # Store actions for each movement type
