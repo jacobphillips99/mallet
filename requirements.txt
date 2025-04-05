@@ -12,3 +12,5 @@ pytest
 black
 ruff
 mypy
+isort
+pre-commit

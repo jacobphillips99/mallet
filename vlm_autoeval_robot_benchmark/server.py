@@ -1,26 +1,19 @@
 """FastAPI server to handle requests from AutoEval."""
 
-import os
-import asyncio
 import logging
-from typing import Dict, List, Optional, Any
-import json
-import base64
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-import numpy as np
-from fastapi import FastAPI, HTTPException, Body, BackgroundTasks
+import uvicorn
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-import uvicorn
 
-from vlm_autoeval_robot_benchmark.models.vlm import VLM, VLMRequest, ImageInput, VLMResponse
-from vlm_autoeval_robot_benchmark.utils.rate_limit import rate_limiter, RateLimitConfig
+from vlm_autoeval_robot_benchmark.models.vlm import VLM, ImageInput, VLMRequest
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -28,7 +21,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="VLM AutoEval Robot Benchmark",
     description="API-driven VLM server for AutoEval robot benchmarking",
-    version="0.1.0"
+    version="0.1.0",
 )
 
 # Add CORS middleware
@@ -46,7 +39,7 @@ vlm_instance = None
 
 class RobotObservation(BaseModel):
     """Robot observation from AutoEval."""
-    
+
     image: str  # Base64 encoded image
     proprio: List[float] = Field(default_factory=list)  # Proprioceptive states
     additional_info: Optional[Dict[str, Any]] = None
@@ -54,7 +47,7 @@ class RobotObservation(BaseModel):
 
 class RobotCommand(BaseModel):
     """Command to be sent to the robot."""
-    
+
     actions: List[float] = Field(default_factory=list)
     success: bool = False
     info: Optional[Dict[str, Any]] = None
@@ -62,7 +55,7 @@ class RobotCommand(BaseModel):
 
 class VLMCommandRequest(BaseModel):
     """Request for VLM command generation."""
-    
+
     observation: RobotObservation
     task_description: str
     history: Optional[List[Dict[str, Any]]] = None
@@ -72,60 +65,60 @@ class VLMCommandRequest(BaseModel):
 
 def translate_command_to_action(command: str) -> List[float]:
     """Translate a command from VLM into robot actions.
-    
+
     Args:
         command: The command from the VLM
-        
+
     Returns:
         The robot actions as a list of floats
     """
     # This is a simplified version based on the ECoT code from the README
     # In a real implementation, this would be more sophisticated
-    
+
     command = command.lower()
-    
+
     # Default action (no movement)
     action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    
+
     # Parse the command for movement directions
     # Format: [x, y, z, roll, pitch, yaw, gripper]
-    
+
     # Forward/backward (x-axis)
     if "forward" in command:
         action[0] = 0.1
     elif "backward" in command:
         action[0] = -0.1
-        
+
     # Left/right (y-axis)
     if "left" in command:
         action[1] = 0.1
     elif "right" in command:
         action[1] = -0.1
-        
+
     # Up/down (z-axis)
     if "up" in command and "tilt" not in command:
         action[2] = 0.1
     elif "down" in command and "tilt" not in command:
         action[2] = -0.1
-        
+
     # Tilt up/down (roll, around x-axis)
     if "tilt up" in command:
         action[3] = 0.1
     elif "tilt down" in command:
         action[3] = -0.1
-        
+
     # Rotation (yaw, around z-axis)
     if "rotate counterclockwise" in command:
         action[5] = 0.1
     elif "rotate clockwise" in command:
         action[5] = -0.1
-        
+
     # Gripper
     if "open gripper" in command:
         action[6] = 0.1
     elif "close gripper" in command:
         action[6] = -0.1
-        
+
     # Return the normalized action
     return action
 
@@ -134,7 +127,7 @@ def get_default_system_prompt() -> str:
     """Get the default system prompt for VLM."""
     return """You are an expert robot control system. Your task is to control a robot arm to accomplish various tasks.
 
-You will receive an image from the robot's camera and a description of the task to perform. 
+You will receive an image from the robot's camera and a description of the task to perform.
 You should analyze the image and provide clear, concise instructions to move the robot.
 
 Use commands like:
@@ -153,80 +146,74 @@ If you believe the task is complete, say "TASK COMPLETE" at the end of your resp
 """
 
 
-def init_vlm_instance():
+def init_vlm_instance() -> None:
     """Initialize the global VLM instance."""
     global vlm_instance
-    
+
     if vlm_instance is None:
         vlm_instance = VLM()
         logger.info("VLM instance initialized")
 
 
 @app.on_event("startup")
-async def startup_event():
+async def startup_event() -> None:
     """Startup event for the FastAPI app."""
     init_vlm_instance()
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, Any]:
     """Root endpoint."""
     return {
         "name": "VLM AutoEval Robot Benchmark",
         "version": "0.1.0",
         "status": "running",
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
 
 @app.post("/health")
-async def health():
+async def health() -> dict[str, Any]:
     """Health check endpoint."""
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat()
-    }
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 
 @app.post("/command")
 async def generate_command(request: VLMCommandRequest) -> RobotCommand:
     """Generate a command for the robot based on the observation and task description.
-    
+
     Args:
         request: The request containing the observation, task description, etc.
-        
+
     Returns:
         The robot command
     """
     global vlm_instance
     init_vlm_instance()
-    
+
     try:
         # Prepare the image
-        image = ImageInput(
-            data=request.observation.image,
-            mime_type="image/jpeg"
-        )
-        
+        image = ImageInput(data=request.observation.image, mime_type="image/jpeg")
+
         # Create a prompt using the task description
         prompt = f"Task: {request.task_description}\n\n"
-        
+
         # Add history context if available
         if request.history:
             prompt += "Previous actions:\n"
             for entry in request.history[-5:]:  # Only show the last 5 entries
                 if "command" in entry and "observation" in entry:
                     prompt += f"- Command: {entry['command']}\n"
-            
+
             prompt += "\n"
-        
+
         # Add proprioceptive state if available
         if request.observation.proprio:
             proprio_str = ", ".join([f"{val:.4f}" for val in request.observation.proprio])
             prompt += f"Current robot state: [{proprio_str}]\n\n"
-        
+
         prompt += "Based on the image, what is the next action to take to complete the task?"
-        
+
         # Create a VLM request
         vlm_request = VLMRequest(
             prompt=prompt,
@@ -234,18 +221,21 @@ async def generate_command(request: VLMCommandRequest) -> RobotCommand:
             model=request.model,
             system_prompt=request.system_prompt or get_default_system_prompt(),
             max_tokens=512,
-            temperature=0.7
+            temperature=0.7,
         )
-        
+
         # Generate a response
+        if not vlm_instance:
+            raise HTTPException(status_code=500, detail="VLM instance not initialized")
+
         response = await vlm_instance.generate(vlm_request)
-        
+
         # Check if the task is complete
         task_complete = "TASK COMPLETE" in response.text.upper()
-        
+
         # Translate the command to actions
         actions = translate_command_to_action(response.text)
-        
+
         return RobotCommand(
             actions=actions,
             success=task_complete,
@@ -254,48 +244,27 @@ async def generate_command(request: VLMCommandRequest) -> RobotCommand:
                 "model": response.model,
                 "provider": response.provider,
                 "response_ms": response.response_ms,
-                "usage": response.usage
-            }
+                "usage": response.usage,
+            },
         )
-        
+
     except Exception as e:
         logger.error(f"Error generating command: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/stats")
-async def get_stats():
-    """Get statistics about the server."""
-    global vlm_instance
-    init_vlm_instance()
-    
-    stats = {}
-    
-    # # Get rate limit stats for registered models
-    # for provider, models in vlm_instance.DEFAULT_RATE_LIMITS.items():
-    #     if provider not in stats:
-    #         stats[provider] = {}
-            
-    #     for model in models:
-    #         stats[provider][model] = rate_limiter.get_usage_stats(provider, model)
-    
-    # return {
-    #     "status": "running",
-    #     "timestamp": datetime.now().isoformat(),
-        "rate_limits": stats
-    }
-
-
-def run_server(host: str = "0.0.0.0", port: int = 8000, log_level: str = "info"):
+def run_server(host: str = "0.0.0.0", port: int = 8000, log_level: str = "info") -> None:
     """Run the FastAPI server.
-    
+
     Args:
         host: The host to bind to
         port: The port to bind to
         log_level: The log level
     """
-    uvicorn.run("vlm_autoeval_robot_benchmark.server:app", host=host, port=port, log_level=log_level)
+    uvicorn.run(
+        "vlm_autoeval_robot_benchmark.server:app", host=host, port=port, log_level=log_level
+    )
 
 
 if __name__ == "__main__":
-    run_server() 
+    run_server()
