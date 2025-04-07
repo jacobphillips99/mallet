@@ -12,11 +12,9 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import litellm
 from pydantic import BaseModel, Field
 
-from vlm_autoeval_robot_benchmark.config import (RateLimitConfig,
-                                                 load_rate_limits)
+from vlm_autoeval_robot_benchmark.config import RateLimitConfig, load_rate_limits
 from vlm_autoeval_robot_benchmark.models.rate_limit import rate_limiter
-from vlm_autoeval_robot_benchmark.models.translation import (DELIMITER,
-                                                             build_prompt)
+from vlm_autoeval_robot_benchmark.models.translation import DELIMITER, build_prompt
 
 logger = logging.getLogger(__name__)
 

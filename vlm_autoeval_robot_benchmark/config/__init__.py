@@ -6,8 +6,7 @@ from typing import Any, Dict
 
 import yaml
 
-from vlm_autoeval_robot_benchmark.models.rate_limit import (ProviderRateLimits,
-                                                            RateLimitConfig)
+from vlm_autoeval_robot_benchmark.models.rate_limit import ProviderRateLimits, RateLimitConfig
 
 logger = logging.getLogger(__name__)
 
