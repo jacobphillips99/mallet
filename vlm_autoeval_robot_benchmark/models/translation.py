@@ -45,17 +45,19 @@ Note that if the robot does not need to perform an action in a certain degree of
     "gripper": ["open", "close", "None"]
 }}
 
-In addition to each chosen value, also output a reason for why you chose that value.
+In addition to each chosen direction value, also output float magnitude and a reason for why you chose that value.
+For the magnitude, use a value between 0 and 1, where 0 is no movement and 1 is the maximum movement in the selected direction.
+For 'None', the magnitude should be 0. The magnitude between 0 and 1 will be scaled to the range of the movement in the selected direction.
 The output should look like this example:
 
 -------- BEGIN EXAMPLE --------
 (insert description of scene and action here)
 ```json
 {{
-    "x": ["backward", "I chose backward because the robot needs to move towards the back / its own body"],
-    "y": ["left", "I chose left because the robot needs to move towards the left wall in order to get closer to the drawer"],
+    "x": ["forward", 0.8, "I chose forward because the robot needs to move very far towards the front wall"],
+    "y": ["left", 0.1,"I chose left because the robot needs to move a little bit towards the left wall in order to get closer to the drawer"],
     ...
-    "gripper": ["None", "I chose None because there is no need for the robot to take any movement with the gripper right now as we are not close to the drawer"]
+    "gripper": ["None", 0.0,"I chose None because there is no need for the robot to take any movement with the gripper right now as we are not close to the drawer"]
 }}
 ```
 -------- END EXAMPLE --------
