@@ -24,3 +24,7 @@ gemini:
   gemini/gemini-2.0-flash: # weird but makes litellm happy without needing Google Vertex API
     requests_per_minute: 2_000
     tokens_per_minute: 4_000_000 # technically input token limit
+
+  gemini/gemini-2.0-pro-exp:
+    requests_per_minute: 20
+    tokens_per_minute: 2_000_000 # technically input token limit

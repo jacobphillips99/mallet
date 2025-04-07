@@ -5,6 +5,7 @@ import base64
 import json
 import logging
 import os
+import re
 import time
 import typing as t
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -14,7 +15,7 @@ from pydantic import BaseModel, Field
 
 from vlm_autoeval_robot_benchmark.config import RateLimitConfig, load_rate_limits
 from vlm_autoeval_robot_benchmark.models.rate_limit import rate_limiter
-from vlm_autoeval_robot_benchmark.models.translation import DELIMITER, build_prompt
+from vlm_autoeval_robot_benchmark.models.translation import build_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,7 @@ class VLMResponse(BaseModel):
     usage: Dict[str, Any] = Field(default_factory=dict)
     response_ms: int = 0
     raw_response: Optional[Dict[str, Any]] = None
+    stop_reason: Optional[str] = None
 
 
 class ImageInput(BaseModel):
@@ -64,7 +66,7 @@ class VLMRequest(BaseModel):
 
     prompt: str
     images: Optional[List[ImageInput]] = None
-    max_tokens: int = 1024
+    max_tokens: int = 8192
     temperature: float = 0.7
     top_p: float = 0.9
     model: str = "gpt-4o-mini"
@@ -354,8 +356,23 @@ def create_vlm_request(
 
 def parse_vlm_response(response_text: str) -> t.Tuple[str, dict]:
     """Parse the VLM response into description and structured answer."""
-    description, answer = response_text.split(DELIMITER)
-    return description.strip(), json.loads(answer)
+    description = response_text.split("```json")[0]
+
+    # Find the JSON content between ```json and ``` markers
+    json_match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", response_text)
+    if not json_match:
+        raise ValueError("Could not find JSON content between ``` markers")
+
+    json_str = json_match.group(1)
+
+    # Clean up common JSON formatting issues
+    json_str = re.sub(r",(\s*})", r"\1", json_str)  # Remove trailing commas before closing braces
+
+    try:
+        return description.strip(), json.loads(json_str)
+    except json.JSONDecodeError as e:
+        # Add context about the actual JSON string that failed to parse
+        raise ValueError(f"Failed to parse JSON: {str(e)}\nJSON string was:\n{json_str}") from e
 
 
 def parse_vlm_responses(

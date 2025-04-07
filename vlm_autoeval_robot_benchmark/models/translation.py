@@ -3,14 +3,12 @@ Helpful components for translating between natural language and robot actions.
 Targeted prompts to fall somewhere between AutoEval and ECoT
 """
 
-DELIMITER = "<answer>"
-
 # Robot description
 ROBOT_DESCRIPTION = """
 The robot has 7 degrees of freedom; imagine these from the point of view of the robot:
 #0: X axis, meaning forward/backward, with forwards being towards the front (slightly right in the image) wall
 #1: Y axis, meaning left/right, with left being towards the left wall
-#2: Z axis, meaning up/down, with up being towards the ceiling
+#2: Z axis, meaning up/down, with up being towards the ceiling and down being towards the floor or desk
 #3: Tilt of the gripper (pitch)
 #4: Roll of the gripper (roll)
 #5: Rotation of the gripper (yaw)
@@ -24,12 +22,15 @@ This will just be the next timestep; you're not trying to accomplish the entire 
 """.strip()
 
 
-def get_output_format(delimiter: str) -> str:
+def get_output_format() -> str:
     """Generate the output format instructions."""
-    return f"""
+    return """
 First, describe the scene, including the robot, the task, the environment, and what progress the robot has made so far in completing the task.
+Make sure to consider the 3D-position of the robot's gripper as well as the vantage point of the camera with respect to the scene.
+You may need to think about complex 3D relationships between the robot, the task, and the environment.
 Next, write a paragraph about the action you'll need to take on this timestep, starting to think about how to break it down into primitive movements.
-Once you've thought about the problem, output a {delimiter} tag and then start the dictionary output (no need to do ```json or anything like that)
+
+Once you've thought about the problem, start the JSON dictionary output. Remember to surround it with ```json tags.
 Then, output a dictionary with 7 elements, each representing a degree of freedom of the robot.
 The keys should be "x", "y", "z", "tilt", "roll", "rotation", and "gripper".
 Choose the values from these options, according to the degrees of freedom described above.
@@ -47,9 +48,9 @@ Note that if the robot does not need to perform an action in a certain degree of
 In addition to each chosen value, also output a reason for why you chose that value.
 The output should look like this example:
 
-```
+-------- BEGIN EXAMPLE --------
 (insert description of scene and action here)
-{delimiter}
+```json
 {{
     "x": ["backward", "I chose backward because the robot needs to move towards the back / its own body"],
     "y": ["left", "I chose left because the robot needs to move towards the left wall in order to get closer to the drawer"],
@@ -57,6 +58,9 @@ The output should look like this example:
     "gripper": ["None", "I chose None because there is no need for the robot to take any movement with the gripper right now as we are not close to the drawer"]
 }}
 ```
+-------- END EXAMPLE --------
+
+The output should NOT be all 'None' actions unless the robot is done with the task.
 
 Below is the image of the scene:
 """.strip()
@@ -73,5 +77,5 @@ def build_prompt(env_desc: str, task_desc: str) -> str:
 
 {METHOD_DESCRIPTION}
 
-{get_output_format(DELIMITER)}
+{get_output_format()}
 """
