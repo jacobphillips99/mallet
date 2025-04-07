@@ -66,11 +66,13 @@ position of "open the drawer". At this point, we know
 import asyncio
 from typing import Any
 
-from vlm_autoeval_robot_benchmark.models.vlm import VLM, create_vlm_request, parse_vlm_response
+from vlm_autoeval_robot_benchmark.models.vlm import VLM, create_vlm_request, parse_vlm_responses
 
 # Constants
 # MODEL = "gpt-4o"
-MODEL = "claude-3-5-sonnet-20241022"
+# MODEL = "claude-3-5-sonnet-20241022"
+MODEL = "gemini/gemini-2.0-flash"
+
 # Environment descriptions
 drawer_environment = """
 You are looking at a wooden desk or table with a black robot arm on it.
@@ -114,22 +116,7 @@ async def run_test(
     vlm = VLM()
     request = create_vlm_request(model, image_path, env_desc, task_desc)
     responses = await vlm.generate_parallel([request] * num_samples)
-    results = []
-
-    for i, response, maybe_exception in responses:
-        if maybe_exception or response is None:
-            results.append({"index": i, "error": str(maybe_exception), "success": False})
-        else:
-            try:
-                description, answer = parse_vlm_response(response.text)
-                results.append(
-                    {"index": i, "description": description, "answer": answer, "success": True}
-                )
-            except Exception as e:
-                results.append(
-                    {"index": i, "error": str(e), "raw_response": response.text, "success": False}
-                )
-
+    results = parse_vlm_responses(responses)
     return results
 
 

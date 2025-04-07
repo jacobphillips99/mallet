@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 # MODEL = "gpt-4o-mini"
-# MODEL = "gemini-2.0-flash"
-MODEL = "claude-3-5-sonnet-20240620"
+MODEL = "gemini/gemini-2.0-flash"
+# MODEL = "claude-3-5-sonnet-20240620"
 
 
 async def test_vlm() -> None:

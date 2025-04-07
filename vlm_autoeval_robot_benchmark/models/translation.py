@@ -19,8 +19,8 @@ The robot has 7 degrees of freedom; imagine these from the point of view of the 
 
 # Method description
 METHOD_DESCRIPTION = """
-Your job is to output the action that will help the robot complete the task.
-This will just be the next timestep; you're not trying to accomplish the entire task, just what the robot should be doing in the next second or so.
+Your job is to output the action that will next help the robot complete the task.
+This will just be the next timestep; you're not trying to accomplish the entire task, just what the robot should be doing in the next timestep.
 """.strip()
 
 

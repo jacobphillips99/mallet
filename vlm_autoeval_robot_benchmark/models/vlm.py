@@ -32,11 +32,11 @@ def get_provider_from_model(model: str) -> str:
         ValueError: If provider cannot be determined
     """
     # Fall back to heuristics
-    if model.startswith("gpt-") or "openai" in model:
+    if model.startswith("gpt") or "openai" in model:
         return "openai"
-    if model.startswith("claude-"):
+    if model.startswith("claude"):
         return "anthropic"
-    if model.startswith("gemini-"):
+    if model.startswith("gemini"):
         return "gemini"
     raise ValueError(f"Could not determine provider for model: {model}")
 
@@ -92,6 +92,18 @@ class VLM:
         for provider in rate_limiter.providers:
             if f"{provider.upper()}_API_KEY" not in os.environ:
                 raise ValueError(f"API key for {provider} is not set")
+
+    async def _acheck_model_available(self, model: str) -> bool:
+        vlm_request = VLMRequest(model=model, prompt="Hello, world!")
+        try:
+            await self.generate(vlm_request)
+            return True
+        except Exception as e:
+            logger.error(f"Error checking model availability for {model}: {str(e)}")
+            return False
+
+    def check_model_available(self, model: str) -> bool:
+        return asyncio.run(self._acheck_model_available(model))
 
     def _setup_rate_limits(self, rate_limits: Optional[RateLimitConfig]) -> None:
         """Set up rate limits for different providers/models.
@@ -344,3 +356,23 @@ def parse_vlm_response(response_text: str) -> t.Tuple[str, dict]:
     """Parse the VLM response into description and structured answer."""
     description, answer = response_text.split(DELIMITER)
     return description.strip(), json.loads(answer)
+
+
+def parse_vlm_responses(
+    responses: List[Tuple[int, Optional[VLMResponse], Optional[Exception]]],
+) -> List[Dict[str, Any]]:
+    results = []
+    for i, response, maybe_exception in responses:
+        if maybe_exception or response is None:
+            results.append({"index": i, "error": str(maybe_exception), "success": False})
+        else:
+            try:
+                description, answer = parse_vlm_response(response.text)
+                results.append(
+                    {"index": i, "description": description, "answer": answer, "success": True}
+                )
+            except Exception as e:
+                results.append(
+                    {"index": i, "error": str(e), "raw_response": response.text, "success": False}
+                )
+    return results
