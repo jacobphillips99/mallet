@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import time
+import traceback
 import typing as t
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -61,13 +62,25 @@ class ImageInput(BaseModel):
     mime_type: str = "image/jpeg"
 
 
-class VLMRequest(BaseModel):
-    """Request to a VLM model."""
+class VLMInput(BaseModel):
+    """Input content for a VLM request."""
 
     prompt: str
     images: Optional[List[ImageInput]] = None
+
+
+class VLMHistory(BaseModel):
+    prompt: str
+    vlm_inputs: List[VLMInput]
+    placement: str = "before"
+
+
+class VLMRequest(BaseModel):
+    """Request to a VLM model."""
+
+    vlm_input: VLMInput
     max_tokens: int = 8192
-    temperature: float = 0.7
+    temperature: float = 0.0
     top_p: float = 0.9
     model: str = "gpt-4o-mini"
     provider: Optional[str] = None  # If None, will be derived from model
@@ -75,6 +88,7 @@ class VLMRequest(BaseModel):
     stream: bool = False
     timeout: float = 120.0
     extra_params: Dict[str, Any] = Field(default_factory=dict)
+    history: Optional[VLMHistory] = None  # List of previous inputs in the conversation
 
 
 class VLM:
@@ -96,12 +110,14 @@ class VLM:
                 raise ValueError(f"API key for {provider} is not set")
 
     async def _acheck_model_available(self, model: str) -> bool:
-        vlm_request = VLMRequest(model=model, prompt="Hello, world!")
+        vlm_request = VLMRequest(model=model, vlm_input=VLMInput(prompt="Hello, world!"))
         try:
             await self.generate(vlm_request)
             return True
         except Exception as e:
-            logger.error(f"Error checking model availability for {model}: {str(e)}")
+            logger.error(
+                f"Error checking model availability for {model}: {str(e)}; {traceback.format_exc()}"
+            )
             return False
 
     def check_model_available(self, model: str) -> bool:
@@ -146,10 +162,48 @@ class VLM:
                 {
                     "type": "image_url",
                     "image_url": {"url": f"data:{img.mime_type};base64,{b64_data}"},
-                }
+                },
             )
 
         return formatted_images
+
+    def _prepare_content(self, vlm_input: VLMInput) -> List[Dict[str, Any]]:
+        if vlm_input.images:
+            # Format for multi-modal models
+            content = [{"type": "text", "text": vlm_input.prompt}]
+
+            # interleave text breaks with images
+            formatted_images = self._prepare_images(vlm_input.images)
+            interleaved_content = [
+                [{"type": "text", "text": f"Image {i+1}:"}, formatted_img_msg]
+                for i, formatted_img_msg in enumerate(formatted_images)
+            ]
+            content.extend(sum(interleaved_content, []))
+        else:
+            # Text-only message
+            content = [{"type": "text", "text": vlm_input.prompt}]
+        return content
+
+    def _prepare_historical_content(self, history: VLMHistory) -> List[Dict[str, Any]]:
+        """Prepare historical content to be included in the content array.
+
+        Args:
+            history: The conversation history
+
+        Returns:
+            List of content items to be included in the message content
+        """
+        content = []
+
+        # Add the history prompt if provided
+        if history.prompt:
+            content.append({"type": "text", "text": history.prompt})
+
+        # Add each historical input's content
+        for vlm_input in history.vlm_inputs:
+            content.extend(self._prepare_content(vlm_input))
+
+        return content
 
     def _estimate_prompt_tokens(self, prompt: str, n_images: int, model: str) -> int:
         """Roughly estimate the number of tokens in a prompt.
@@ -205,24 +259,28 @@ class VLM:
         # Prepare user message with images if any
         user_message: Dict[str, Any] = {"role": "user"}
 
-        if request.images:
-            # Format for multi-modal models
-            content = [{"type": "text", "text": request.prompt}]
+        # Prepare content for the user message
+        vlm_input = request.vlm_input
+        content = self._prepare_content(vlm_input)
 
-            # Add images
-            formatted_images = self._prepare_images(request.images)
-            content.extend(formatted_images)
+        # Add history if provided
+        if request.history:
+            historical_content = self._prepare_historical_content(request.history)
+            if request.history.placement == "before":
+                content = historical_content + content
+            elif request.history.placement == "after":
+                content = content + historical_content
+            else:
+                raise ValueError(f"Invalid placement: {request.history.placement}")
 
-            user_message["content"] = content
-        else:
-            # Text-only message
-            user_message["content"] = request.prompt
-
+        user_message["content"] = content
         messages.append(user_message)
 
         # Calculate estimated tokens
         estimated_tokens = self._estimate_prompt_tokens(
-            request.prompt, len(request.images) if request.images else 0, request.model
+            request.vlm_input.prompt,
+            len(request.vlm_input.images) if request.vlm_input.images else 0,
+            request.model,
         )
 
         # Wait for rate limit
@@ -291,12 +349,14 @@ class VLM:
                 raise
 
         except Exception as e:
-            logger.error(f"Error generating response from {provider}/{request.model}: {str(e)}")
+            logger.error(
+                f"Error generating response from {provider}/{request.model}: {str(e)}; {traceback.format_exc()}"
+            )
             raise
 
     async def generate_parallel(
         self, requests: List[VLMRequest]
-    ) -> List[Tuple[int, Optional[VLMResponse], Optional[Exception]]]:
+    ) -> List[Tuple[int, Optional[VLMResponse], Optional[str]]]:
         """Generate responses from multiple VLM requests in parallel.
 
         Args:
@@ -311,12 +371,12 @@ class VLM:
 
         async def _process_request(
             index: int, request: VLMRequest
-        ) -> Tuple[int, Optional[VLMResponse], Optional[Exception]]:
+        ) -> Tuple[int, Optional[VLMResponse], Optional[str]]:
             try:
                 response = await self.generate(request)
                 return index, response, None
-            except Exception as e:
-                return index, None, e
+            except Exception:
+                return index, None, traceback.format_exc()
 
         # Process all requests in parallel
         tasks = [_process_request(i, req) for i, req in enumerate(requests)]
@@ -347,10 +407,12 @@ def create_vlm_request(
     image_data = load_image(image_path_or_bytes)
     return VLMRequest(
         model=model,
-        prompt=build_prompt(env_desc, task_desc),
-        images=[
-            ImageInput(data=base64.b64encode(image_data).decode("utf-8"), mime_type="image/png")
-        ],
+        vlm_input=VLMInput(
+            prompt=build_prompt(env_desc, task_desc),
+            images=[
+                ImageInput(data=base64.b64encode(image_data).decode("utf-8"), mime_type="image/png")
+            ],
+        ),
     )
 
 
@@ -376,7 +438,7 @@ def parse_vlm_response(response_text: str) -> t.Tuple[str, dict]:
 
 
 def parse_vlm_responses(
-    responses: List[Tuple[int, Optional[VLMResponse], Optional[Exception]]],
+    responses: List[Tuple[int, Optional[VLMResponse], Optional[str]]],
 ) -> List[Dict[str, Any]]:
     results = []
     for i, response, maybe_exception in responses:

@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from vlm_autoeval_robot_benchmark.models.vlm import VLM, ImageInput, VLMRequest
+from vlm_autoeval_robot_benchmark.models.vlm import VLM, ImageInput, VLMInput, VLMRequest
 
 # Configure logging
 logging.basicConfig(
@@ -216,8 +216,10 @@ async def generate_command(request: VLMCommandRequest) -> RobotCommand:
 
         # Create a VLM request
         vlm_request = VLMRequest(
-            prompt=prompt,
-            images=[image],
+            vlm_input=VLMInput(
+                prompt=prompt,
+                images=[image],
+            ),
             model=request.model,
             system_prompt=request.system_prompt or get_default_system_prompt(),
             max_tokens=512,

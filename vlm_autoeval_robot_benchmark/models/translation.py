@@ -63,8 +63,6 @@ The output should look like this example:
 -------- END EXAMPLE --------
 
 The output should NOT be all 'None' actions unless the robot is done with the task.
-
-Below is the image of the scene:
 """.strip()
 
 

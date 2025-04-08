@@ -1,12 +1,13 @@
 """
-Annotated and reworked copy of the Embodied Chain of Thought (ECoT) paper's "primitive movements", 
-which turns 7-dof robot actions into a text-based descriptions. 
+Annotated and reworked copy of the Embodied Chain of Thought (ECoT) paper's "primitive movements",
+which turns 7-dof robot actions into a text-based descriptions.
 https://github.com/MichalZawalski/embodied-CoT/blob/main/scripts/generate_embodied_data/primitive_movements.py
 """
 
-import numpy as np
 import copy
 import typing as t
+
+import numpy as np
 
 # Direction mappings for each of the 7 DOF
 # Indices represent:
@@ -16,32 +17,32 @@ import typing as t
 # 5: rotation (yaw)
 # 6: gripper state
 DIRECTION_NAMES: list[dict[int, t.Optional[str]]] = [
-    {-1: "backward", 0: None, 1: "forward"},     # x-axis
-    {-1: "right", 0: None, 1: "left"},           # y-axis
-    {-1: "down", 0: None, 1: "up"},              # z-axis
-    {-1: "tilt down", 0: None, 1: "tilt up"},    # pitch
-    {},                                          # roll (unused)
+    {-1: "backward", 0: None, 1: "forward"},  # x-axis
+    {-1: "right", 0: None, 1: "left"},  # y-axis
+    {-1: "down", 0: None, 1: "up"},  # z-axis
+    {-1: "tilt down", 0: None, 1: "tilt up"},  # pitch
+    {},  # roll (unused)
     {-1: "rotate clockwise", 0: None, 1: "rotate counterclockwise"},  # yaw
-    {-1: "close gripper", 0: None, 1: "open gripper"},                # gripper
+    {-1: "close gripper", 0: None, 1: "open gripper"},  # gripper
 ]
 
 
 def describe_move(move_vec: np.ndarray) -> str:
     """
     Converts a 7-DOF movement vector to a human-readable text description.
-    
+
     Args:
         move_vec: A vector of shape (7,) with values {-1, 0, 1} indicating movement direction
                  for each degree of freedom
-    
+
     Returns:
         A string description of the movement
     """
     names = copy.deepcopy(DIRECTION_NAMES)
-    
+
     # Get text descriptions for x, y, z movements
-    xyz_move = [names[i][move_vec[i]] for i in range(0, 3)]
-    xyz_move = [m for m in xyz_move if m is not None]
+    xyz_move_with_none: list[str | None] = [names[i][move_vec[i]] for i in range(0, 3)]
+    xyz_move: list[str] = [m for m in xyz_move_with_none if m is not None]
 
     # Start building the description with translations
     if len(xyz_move) != 0:
@@ -57,19 +58,25 @@ def describe_move(move_vec: np.ndarray) -> str:
     if move_vec[3] != 0:
         if len(description) > 0:
             description = description + ", "
-        description = description + names[3][move_vec[3]]
+        this_move = names[3][move_vec[3]]
+        if this_move is not None:
+            description = description + this_move
 
     # Add rotation (yaw) description
     if move_vec[5] != 0:
         if len(description) > 0:
             description = description + ", "
-        description = description + names[5][move_vec[5]]
+        this_move = names[5][move_vec[5]]
+        if this_move is not None:
+            description = description + this_move
 
     # Add gripper state description
     if move_vec[6] != 0:
         if len(description) > 0:
             description = description + ", "
-        description = description + names[6][move_vec[6]]
+        this_move = names[6][move_vec[6]]
+        if this_move is not None:
+            description = description + this_move
 
     # Default when no movement
     if len(description) == 0:
@@ -81,11 +88,11 @@ def describe_move(move_vec: np.ndarray) -> str:
 def classify_movement(move: np.ndarray, threshold: float = 0.03) -> tuple[str, np.ndarray]:
     """
     Converts a sequence of robot states into a movement primitive description.
-    
+
     Args:
         move: A sequence of robot states, typically a trajectory segment
         threshold: Movement threshold below which movements are considered negligible
-    
+
     Returns:
         A tuple containing:
             - Text description of the movement
@@ -111,13 +118,15 @@ def classify_movement(move: np.ndarray, threshold: float = 0.03) -> tuple[str, n
 move_actions: dict[str, list[np.ndarray]] = dict()
 
 
-def get_move_primitives_episode(episode: dict, threshold: float = 0.03) -> list[tuple[str, np.ndarray]]:
+def get_move_primitives_episode(
+    episode: dict, threshold: float = 0.03, window: int = 4
+) -> list[tuple[str, np.ndarray]]:
     """
     Extracts movement primitives from a full episode.
-    
+
     Args:
         episode: Dictionary containing episode data with steps, observations, and actions
-    
+
     Returns:
         List of (movement_description, movement_vector) tuples for each step
     """
@@ -142,18 +151,18 @@ def get_move_primitives_episode(episode: dict, threshold: float = 0.03) -> list[
     return primitives
 
 
-def get_move_primitives(episode_id: int, builder) -> list[tuple[str, np.ndarray]]:
+def get_move_primitives(episode_id: int, builder: t.Any) -> list[tuple[str, np.ndarray]]:
     """
     Retrieves movement primitives for a specific episode using a dataset builder.
-    
+
     Args:
         episode_id: ID of the episode to process
         builder: Dataset builder object with as_dataset method
-    
+
     Returns:
         List of movement primitives for the episode
     """
     ds = builder.as_dataset(split=f"train[{episode_id}:{episode_id + 1}]")
     episode = next(iter(ds))
-    
+
     return get_move_primitives_episode(episode)
