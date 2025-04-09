@@ -38,7 +38,7 @@
             "interdecile_range": 0.0258122720037932
         }
     },
-    "pitch": {
+    "tilt": {
         "description": "Tilt Up (+) / Down (-)",
         "actions": {
             "mean": -0.00034146375160114826,
@@ -64,7 +64,7 @@
             "interdecile_range": 0.06626031465126717
         }
     },
-    "yaw": {
+    "rotation": {
         "description": "Rotate CCW (+) / CW (-)",
         "actions": {
             "mean": -0.0013224975282744398,

@@ -20,9 +20,9 @@ DIRECTION_NAMES: dict[str, dict[int, t.Optional[str]]] = {
     "x": {-1: "backward", 0: None, 1: "forward"},  # x-axis
     "y": {-1: "right", 0: None, 1: "left"},  # y-axis
     "z": {-1: "down", 0: None, 1: "up"},  # z-axis
-    "pitch": {-1: "tilt down", 0: None, 1: "tilt up"},  # pitch
+    "tilt": {-1: "tilt down", 0: None, 1: "tilt up"},  # pitch
     "roll": {},  # roll (unused)
-    "yaw": {-1: "rotate clockwise", 0: None, 1: "rotate counterclockwise"},  # yaw
+    "rotation": {-1: "rotate clockwise", 0: None, 1: "rotate counterclockwise"},  # yaw
     "gripper": {-1: "close gripper", 0: None, 1: "open gripper"},  # gripper
 }
 REVERSE_DIRECTION_NAMES = {k: {v: k for k, v in v.items()} for k, v in DIRECTION_NAMES.items()}
@@ -61,7 +61,7 @@ def describe_move(move_vec: np.ndarray) -> str:
     if move_vec[3] != 0:
         if len(description) > 0:
             description = description + ", "
-        this_move = names["pitch"][move_vec[3]]
+        this_move = names["tilt"][move_vec[3]]
         if this_move is not None:
             description = description + this_move
 
@@ -69,7 +69,7 @@ def describe_move(move_vec: np.ndarray) -> str:
     if move_vec[5] != 0:
         if len(description) > 0:
             description = description + ", "
-        this_move = names["yaw"][move_vec[5]]
+        this_move = names["rotation"][move_vec[5]]
         if this_move is not None:
             description = description + this_move
 
