@@ -75,6 +75,25 @@ class VLMHistory(BaseModel):
     suffix: str
     placement: str = "before"
 
+    @classmethod
+    def from_dict(cls, data: dict[str, t.Any]) -> "VLMHistory":
+        # helper to reformat raw data into structured VLMHistory
+        vlm_history_inputs: list[tuple[str, list[bytes]]] = data["vlm_inputs"]
+        history_inputs = [
+            VLMInput(
+                prompt=history_prompt_i,
+                images=[
+                    ImageInput(
+                        data=base64.b64encode(load_image(history_images_i_j)).decode("utf-8"),
+                        mime_type="image/png",
+                    )
+                    for history_images_i_j in history_images_i
+                ],
+            )
+            for history_prompt_i, history_images_i in vlm_history_inputs
+        ]
+        return cls(prefix=data["prefix"], vlm_inputs=history_inputs, suffix=data["suffix"])
+
 
 class VLMRequest(BaseModel):
     """Request to a VLM model."""
@@ -413,30 +432,14 @@ def create_vlm_request(
     env_desc: str,
     task_desc: str,
     gripper_position: t.Optional[str] = None,
-    history: t.Optional[dict[str, t.Union[str, list[tuple[str, list[bytes]]]]]] = None,
+    history_dict: t.Optional[dict[str, t.Union[str, list[tuple[str, list[bytes]]]]]] = None,
 ) -> VLMRequest:
     """Create a VLM request for the given configuration."""
     image_data = load_image(image_path_or_bytes)
-    if history is not None:
-        if not isinstance(history["vlm_inputs"], list):
+    if history_dict is not None:
+        if not isinstance(history_dict.get("vlm_inputs"), list):
             raise ValueError("history['vlm_inputs'] must be a list")
-        vlm_history_inputs: list[tuple[str, list[bytes]]] = history["vlm_inputs"]
-        history_inputs = [
-            VLMInput(
-                prompt=history_prompt_i,
-                images=[
-                    ImageInput(
-                        data=base64.b64encode(load_image(history_images_i_j)).decode("utf-8"),
-                        mime_type="image/png",
-                    )
-                    for history_images_i_j in history_images_i
-                ],
-            )
-            for history_prompt_i, history_images_i in vlm_history_inputs
-        ]
-        history = VLMHistory(
-            prefix=history["prefix"], vlm_inputs=history_inputs, suffix=history["suffix"]
-        )
+        history = VLMHistory.from_dict(history_dict)
     else:
         history = None
 

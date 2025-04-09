@@ -52,12 +52,13 @@ Note that if the robot does not need to perform an action in a certain degree of
     "tilt": ["tilt up", "tilt down", "None"],
     "roll": ["roll up", "roll down", "None"],
     "rotation": ["rotate clockwise", "rotate counterclockwise", "None"],
-    "gripper": ["open", "close", "None"]
+    "gripper": ["open", "close"]
 }}
 
 In addition to each chosen direction value, also output float magnitude and a reason for why you chose that value.
 For the magnitude, use a value between 0 and 1, where 0 is no movement and 1 is the maximum movement in the selected direction.
 For 'None', the magnitude should be 0. The magnitude between 0 and 1 will be scaled to the range of the movement in the selected direction.
+Note that for the gripper, there is no 'None' option, as the gripper should always be open or closed.
 The output should look like this example:
 
 -------- BEGIN EXAMPLE --------
@@ -68,12 +69,12 @@ The output should look like this example:
     "x": ["forward", 0.8, "I chose forward because the robot needs to move very far towards the front wall"],
     "y": ["left", 0.1,"I chose left because the robot needs to move a little bit towards the left wall in order to get closer to the drawer"],
     ...
-    "gripper": ["None", 0.0,"I chose None because there is no need for the robot to take any movement with the gripper right now as we are not close to the drawer"]
+    "gripper": ["closed", 1.0, "I chose closed because the robot needs to close the gripper to grasp the object"]
 }}
 ```
 -------- END EXAMPLE --------
 
-The output should NOT be all 'None' actions unless the robot is done with the task.
+Note: The output should NOT be all 'None' actions unless the robot is done with the task.
 """.strip()
 
 

@@ -16,15 +16,16 @@ import numpy as np
 # 4: roll (empty in this implementation, as 3 and 4 are treated as equivalent)
 # 5: rotation (yaw)
 # 6: gripper state
-DIRECTION_NAMES: list[dict[int, t.Optional[str]]] = [
-    {-1: "backward", 0: None, 1: "forward"},  # x-axis
-    {-1: "right", 0: None, 1: "left"},  # y-axis
-    {-1: "down", 0: None, 1: "up"},  # z-axis
-    {-1: "tilt down", 0: None, 1: "tilt up"},  # pitch
-    {},  # roll (unused)
-    {-1: "rotate clockwise", 0: None, 1: "rotate counterclockwise"},  # yaw
-    {-1: "close gripper", 0: None, 1: "open gripper"},  # gripper
-]
+DIRECTION_NAMES: dict[str, dict[int, t.Optional[str]]] = {
+    "x": {-1: "backward", 0: None, 1: "forward"},  # x-axis
+    "y": {-1: "right", 0: None, 1: "left"},  # y-axis
+    "z": {-1: "down", 0: None, 1: "up"},  # z-axis
+    "pitch": {-1: "tilt down", 0: None, 1: "tilt up"},  # pitch
+    "roll": {},  # roll (unused)
+    "yaw": {-1: "rotate clockwise", 0: None, 1: "rotate counterclockwise"},  # yaw
+    "gripper": {-1: "close gripper", 0: None, 1: "open gripper"},  # gripper
+}
+REVERSE_DIRECTION_NAMES = {k: {v: k for k, v in v.items()} for k, v in DIRECTION_NAMES.items()}
 
 
 def describe_move(move_vec: np.ndarray) -> str:
@@ -41,7 +42,9 @@ def describe_move(move_vec: np.ndarray) -> str:
     names = copy.deepcopy(DIRECTION_NAMES)
 
     # Get text descriptions for x, y, z movements
-    xyz_move_with_none: list[str | None] = [names[i][move_vec[i]] for i in range(0, 3)]
+    xyz_move_with_none: list[str | None] = [
+        names[ax][move_vec[i]] for i, ax in enumerate(["x", "y", "z"])
+    ]
     xyz_move: list[str] = [m for m in xyz_move_with_none if m is not None]
 
     # Start building the description with translations
@@ -58,7 +61,7 @@ def describe_move(move_vec: np.ndarray) -> str:
     if move_vec[3] != 0:
         if len(description) > 0:
             description = description + ", "
-        this_move = names[3][move_vec[3]]
+        this_move = names["pitch"][move_vec[3]]
         if this_move is not None:
             description = description + this_move
 
@@ -66,7 +69,7 @@ def describe_move(move_vec: np.ndarray) -> str:
     if move_vec[5] != 0:
         if len(description) > 0:
             description = description + ", "
-        this_move = names[5][move_vec[5]]
+        this_move = names["yaw"][move_vec[5]]
         if this_move is not None:
             description = description + this_move
 
@@ -74,7 +77,7 @@ def describe_move(move_vec: np.ndarray) -> str:
     if move_vec[6] != 0:
         if len(description) > 0:
             description = description + ", "
-        this_move = names[6][move_vec[6]]
+        this_move = names["gripper"][move_vec[6]]
         if this_move is not None:
             description = description + this_move
 
