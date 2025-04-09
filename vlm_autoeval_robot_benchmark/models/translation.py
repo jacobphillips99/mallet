@@ -3,6 +3,8 @@ Helpful components for translating between natural language and robot actions.
 Targeted prompts to fall somewhere between AutoEval and ECoT
 """
 
+import typing as t
+
 # Robot description
 ROBOT_DESCRIPTION = """
 The robot has 7 degrees of freedom; imagine these from the point of view of the robot:
@@ -21,12 +23,20 @@ Your job is to output the action that will next help the robot complete the task
 This will just be the next timestep; you're not trying to accomplish the entire task, just what the robot should be doing in the next timestep.
 """.strip()
 
+HISTORY_INSTRUCTIONS = """
+Consider the history provided in regards to the Historical Image as opposed to the provided Image.
+Compare and contrast the historical state to the present state with respect to robot motion and the changes in the environment.
+""".strip()
 
-def get_output_format() -> str:
+
+def get_output_format(gripper_position: t.Optional[str] = None, history: bool = False) -> str:
     """Generate the output format instructions."""
-    return """
-First, describe the scene, including the robot, the task, the environment, and what progress the robot has made so far in completing the task.
+    return f"""
+{HISTORY_INSTRUCTIONS if history else ""}
+Describe the scene, including the robot, the task, the environment, and what progress the robot has made so far in completing the task.
 Make sure to consider the 3D-position of the robot's gripper as well as the vantage point of the camera with respect to the scene.
+Always consider whether the gripper is ACTUALLY grasping and closed around an object, not just whether it is in the vicinity of an object.
+{f"For reference, the gripper position is currently {gripper_position}." if gripper_position else ""}
 You may need to think about complex 3D relationships between the robot, the task, and the environment.
 Next, write a paragraph about the action you'll need to take on this timestep, starting to think about how to break it down into primitive movements.
 
@@ -51,6 +61,7 @@ For 'None', the magnitude should be 0. The magnitude between 0 and 1 will be sca
 The output should look like this example:
 
 -------- BEGIN EXAMPLE --------
+{"Description of the historical state and the changes with respect to the current state" if history else ""}
 (insert description of scene and action here)
 ```json
 {{
@@ -66,7 +77,12 @@ The output should NOT be all 'None' actions unless the robot is done with the ta
 """.strip()
 
 
-def build_prompt(env_desc: str, task_desc: str) -> str:
+def build_prompt(
+    env_desc: str,
+    task_desc: str,
+    gripper_position: t.Optional[str] = None,
+    history_flag: bool = False,
+) -> str:
     """Build the prompt for the VLM."""
     return f"""
 {env_desc}
@@ -77,5 +93,5 @@ def build_prompt(env_desc: str, task_desc: str) -> str:
 
 {METHOD_DESCRIPTION}
 
-{get_output_format()}
+{get_output_format(gripper_position, history_flag)}
 """

@@ -30,5 +30,5 @@ gemini:
     tokens_per_minute: 2_000_000 # technically input token limit
 
   gemini/gemini-2.5-pro-preview-03-25:
-    requests_per_minute: 20
+    requests_per_minute: 150
     tokens_per_minute: 2_000_000 # technically input token limit

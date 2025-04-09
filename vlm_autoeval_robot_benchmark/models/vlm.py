@@ -70,8 +70,9 @@ class VLMInput(BaseModel):
 
 
 class VLMHistory(BaseModel):
-    prompt: str
+    prefix: str
     vlm_inputs: List[VLMInput]
+    suffix: str
     placement: str = "before"
 
 
@@ -167,7 +168,9 @@ class VLM:
 
         return formatted_images
 
-    def _prepare_content(self, vlm_input: VLMInput) -> List[Dict[str, Any]]:
+    def _prepare_content(
+        self, vlm_input: VLMInput, image_key: str = "Image"
+    ) -> List[Dict[str, Any]]:
         if vlm_input.images:
             # Format for multi-modal models
             content = [{"type": "text", "text": vlm_input.prompt}]
@@ -175,7 +178,7 @@ class VLM:
             # interleave text breaks with images
             formatted_images = self._prepare_images(vlm_input.images)
             interleaved_content = [
-                [{"type": "text", "text": f"Image {i+1}:"}, formatted_img_msg]
+                [{"type": "text", "text": f"{image_key} {i+1}:"}, formatted_img_msg]
                 for i, formatted_img_msg in enumerate(formatted_images)
             ]
             content.extend(sum(interleaved_content, []))
@@ -196,12 +199,16 @@ class VLM:
         content = []
 
         # Add the history prompt if provided
-        if history.prompt:
-            content.append({"type": "text", "text": history.prompt})
+        if history.prefix:
+            content.append({"type": "text", "text": history.prefix})
 
         # Add each historical input's content
         for vlm_input in history.vlm_inputs:
-            content.extend(self._prepare_content(vlm_input))
+            content.extend(self._prepare_content(vlm_input, image_key="Historical Image"))
+
+        # Add the history suffix if provided
+        if history.suffix:
+            content.append({"type": "text", "text": history.suffix})
 
         return content
 
@@ -401,18 +408,49 @@ def load_image(image_path_or_bytes: t.Union[str, bytes]) -> bytes:
 
 
 def create_vlm_request(
-    model: str, image_path_or_bytes: t.Union[str, bytes], env_desc: str, task_desc: str
+    model: str,
+    image_path_or_bytes: t.Union[str, bytes],
+    env_desc: str,
+    task_desc: str,
+    gripper_position: t.Optional[str] = None,
+    history: t.Optional[dict[str, t.Union[str, list[tuple[str, list[bytes]]]]]] = None,
 ) -> VLMRequest:
     """Create a VLM request for the given configuration."""
     image_data = load_image(image_path_or_bytes)
+    if history is not None:
+        if not isinstance(history["vlm_inputs"], list):
+            raise ValueError("history['vlm_inputs'] must be a list")
+        vlm_history_inputs: list[tuple[str, list[bytes]]] = history["vlm_inputs"]
+        history_inputs = [
+            VLMInput(
+                prompt=history_prompt_i,
+                images=[
+                    ImageInput(
+                        data=base64.b64encode(load_image(history_images_i_j)).decode("utf-8"),
+                        mime_type="image/png",
+                    )
+                    for history_images_i_j in history_images_i
+                ],
+            )
+            for history_prompt_i, history_images_i in vlm_history_inputs
+        ]
+        history = VLMHistory(
+            prefix=history["prefix"], vlm_inputs=history_inputs, suffix=history["suffix"]
+        )
+    else:
+        history = None
+
     return VLMRequest(
         model=model,
         vlm_input=VLMInput(
-            prompt=build_prompt(env_desc, task_desc),
+            prompt=build_prompt(
+                env_desc, task_desc, gripper_position, history_flag=history is not None
+            ),
             images=[
                 ImageInput(data=base64.b64encode(image_data).decode("utf-8"), mime_type="image/png")
             ],
         ),
+        history=history,
     )
 
 

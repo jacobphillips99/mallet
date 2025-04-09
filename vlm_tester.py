@@ -16,8 +16,9 @@ from vlm_autoeval_robot_benchmark.models.vlm import (
 logger = logging.getLogger(__name__)
 
 
-# MODEL = "gpt-4o-mini"
-MODEL = "gemini/gemini-2.0-flash"
+MODEL = "gpt-4o-mini"
+# MODEL = "gemini/gemini-2.0-flash"
+# MODEL = "gemini/gemini-2.5-pro-preview-03-25"
 # MODEL = "claude-3-5-sonnet-20240620"
 
 
@@ -60,13 +61,14 @@ async def test_vlm() -> None:
         data=base64.b64encode(history_image_data).decode("utf-8"), mime_type="image/jpeg"
     )
     history = VLMHistory(
-        prompt="This shows the history of a robotics episode.",
+        prefix="This shows the history of a robotics episode.",
         vlm_inputs=[
             VLMInput(
                 prompt="This image shows the initial state of the scene.",
                 images=[history_image_input],
             )
         ],
+        suffix="Use this history to answer the question below.",
         placement="before",
     )
 

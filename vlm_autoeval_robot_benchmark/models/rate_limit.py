@@ -1,7 +1,9 @@
-"""Rate limiting utilities for VLM API calls."""
+"""Rate limiting utilities for VLM API calls with built-in monitoring."""
 
 import asyncio
+import json
 import logging
+import os
 import threading
 import time
 from typing import Any, Dict, Optional
@@ -9,6 +11,8 @@ from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
+
+RATE_LIMIT_STATS_PATH = "/tmp/rate_limit_stats.json"
 
 
 class ModelRateLimitConfig(BaseModel):
@@ -37,14 +41,57 @@ class RateLimitConfig(BaseModel):
 
 
 class RateLimit:
-    """Rate limit handler for API calls."""
+    """Rate limit handler for API calls with built-in monitoring."""
 
-    def __init__(self) -> None:
-        """Initialize the rate limit handler."""
-        self._provider_model_configs: Dict[str, Dict[str, RateLimitConfig]] = {}
+    def __init__(
+        self,
+        stats_path: str = RATE_LIMIT_STATS_PATH,
+        monitor_interval: float = 1.0,
+        disable_monitoring: bool = False,
+    ) -> None:
+        """Initialize the rate limit handler.
+
+        Args:
+            stats_path: Path to write stats to. If None, uses /tmp/rate_limit_stats.json
+            monitor_interval: How often to update the stats file (seconds)
+            disable_monitoring: If True, won't write stats to file
+        """
+        self._provider_model_configs: Dict[str, Dict[str, ModelRateLimitConfig]] = {}
         self._provider_model_states: Dict[str, Dict[str, Dict]] = {}
         self._locks: Dict[str, Dict[str, threading.Lock]] = {}
         self._semaphores: Dict[str, Dict[str, asyncio.Semaphore]] = {}
+
+        # Stats monitoring
+        self._stats_path = stats_path
+        self._monitor_interval = monitor_interval
+        self._monitor_running = not disable_monitoring
+        self._monitor_task: Optional[asyncio.Task] = None
+
+        # Start monitoring automatically if not disabled
+        if self._monitor_running:
+            # This will be initialized when register_model is first called
+            # or when get_usage_stats is first called
+            pass
+
+    def _ensure_monitor_started(self) -> None:
+        """Ensure the monitoring task is started if enabled."""
+        if self._monitor_running and self._monitor_task is None:
+            try:
+                # Get the current event loop or create one if needed
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+
+                # Create the monitoring task
+                self._monitor_task = loop.create_task(self._monitor_loop())
+                logger.info(
+                    f"Started rate limit monitoring, writing to {self._stats_path} every {self._monitor_interval}s"
+                )
+            except Exception as e:
+                logger.error(f"Failed to start monitoring: {e}")
+                self._monitor_running = False
 
     @property
     def providers(self) -> list[str]:
@@ -55,7 +102,7 @@ class RateLimit:
         """
         return list(self._provider_model_configs.keys())
 
-    def register_model(self, provider: str, model: str, config: RateLimitConfig) -> None:
+    def register_model(self, provider: str, model: str, config: ModelRateLimitConfig) -> None:
         """Register a model with its rate limit configuration.
 
         Args:
@@ -86,7 +133,10 @@ class RateLimit:
 
         logger.info(f"Registered model {provider}/{model} with config: {config}")
 
-    def get_config(self, provider: str, model: str) -> Optional[RateLimitConfig]:
+        # Start monitoring if enabled and not already started
+        self._ensure_monitor_started()
+
+    def get_config(self, provider: str, model: str) -> Optional[ModelRateLimitConfig]:
         """Get the rate limit configuration for a provider/model.
 
         Args:
@@ -225,17 +275,40 @@ class RateLimit:
                 timestamp, _ = state["token_usage"][-1]
                 state["token_usage"][-1] = (timestamp, tokens_used)
 
-    def get_usage_stats(self, provider: str, model: str) -> dict[str, Any]:
+    def get_usage_stats(
+        self, provider: Optional[str] = None, model: Optional[str] = None
+    ) -> dict[str, Any]:
         """Get current usage statistics.
 
         Args:
-            provider: The provider name
-            model: The model name
+            provider: The provider name (optional, if None returns stats for all providers)
+            model: The model name (optional, if None returns stats for all models of the provider)
 
         Returns:
             Dictionary with current usage statistics
         """
-        if not self.get_config(provider, model):
+        # Start monitoring if enabled and not already started
+        self._ensure_monitor_started()
+
+        result: Dict[str, Any] = {}
+
+        if provider is None:
+            # Return stats for all providers
+            for provider_name in self.providers:
+                result[provider_name] = self.get_usage_stats(provider_name)
+            return result
+
+        if provider not in self._provider_model_configs:
+            return {"error": "Provider not registered"}
+
+        if model is None:
+            # Return stats for all models of this provider
+            provider_stats = {}
+            for model_name in self._provider_model_configs[provider]:
+                provider_stats[model_name] = self.get_usage_stats(provider, model_name)
+            return provider_stats
+
+        if model not in self._provider_model_configs[provider]:
             return {"error": "Model not registered"}
 
         with self._locks[provider][model]:
@@ -276,6 +349,26 @@ class RateLimit:
                     ),
                 },
             }
+
+    async def _monitor_loop(self) -> None:
+        """Background task to periodically write stats to file."""
+        try:
+            while self._monitor_running:
+                stats = {"timestamp": time.time(), "stats": self.get_usage_stats()}
+
+                # Ensure directory exists
+                os.makedirs(os.path.dirname(self._stats_path), exist_ok=True)
+
+                # Write stats to file atomically
+                tmp_path = f"{self._stats_path}.tmp"
+                with open(tmp_path, "w") as f:
+                    json.dump(stats, f, indent=2)
+                os.rename(tmp_path, self._stats_path)
+
+                await asyncio.sleep(self._monitor_interval)
+        except Exception as e:
+            logger.error(f"Error in monitor loop: {e}")
+            self._monitor_running = False
 
 
 # Global rate limiter instance
