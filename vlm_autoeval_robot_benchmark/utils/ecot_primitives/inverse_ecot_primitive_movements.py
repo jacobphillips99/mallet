@@ -17,6 +17,7 @@ ACTION_BOUNDS: dict[str, dict[str, dict[str, float]]] = json.load(open(action_bo
 
 
 def normalize_action_to_bounds(k: str, pred_direction: str, pred_magnitude: float) -> float:
+    # converts text direction and magnitude to normalized action value
     # find the signed direction, ie "forward" -> 1, "backward" -> -1
     signed_direction = REVERSE_DIRECTION_NAMES[k][pred_direction]
     # find the magnitude w.r.t to the action bounds in the correct direction
@@ -25,6 +26,32 @@ def normalize_action_to_bounds(k: str, pred_direction: str, pred_magnitude: floa
     scaled_magnitude = pred_magnitude * half_range
     # either add or subtract the scaled magnitude from the median
     return action_bounds["median"] + signed_direction * scaled_magnitude
+
+
+def unnormalize_bounded_action(k: str, normalized_action_value: float) -> tuple[float, str]:
+    # converts normalized action value to text direction and magnitude
+    if k == "gripper":
+        # gripper is a special case, it's a binary action
+        magnitude = 1.0 if normalized_action_value > 0.95 else 0.0
+        direction_str = "open gripper" if magnitude == 1.0 else "close gripper"
+        return magnitude, direction_str
+
+    # find the difference from the median, unnormalize according to range
+    median_diff = normalized_action_value - ACTION_BOUNDS[k]["actions"]["median"]
+    half_range = ACTION_BOUNDS[k]["actions"]["interdecile_range"] / 2
+    direction_value = int(np.sign(median_diff))
+
+    # handle middle-ground None case
+    if direction_value == 0:
+        return 0.0, "None"
+
+    # handle null roll case
+    if direction_value not in DIRECTION_NAMES[k]:
+        direction_str = "None"
+    else:
+        direction_str = str(DIRECTION_NAMES[k][direction_value])
+    magnitude = abs(median_diff) / half_range
+    return magnitude, direction_str
 
 
 def text_to_move_vector(
