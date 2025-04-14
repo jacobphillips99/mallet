@@ -6,6 +6,8 @@ pydantic
 numpy
 aiohttp
 pyyaml
+draccus
+modal
 
 # Dev dependencies
 pytest

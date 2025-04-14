@@ -1,15 +1,45 @@
-"""FastAPI server to handle requests from AutoEval."""
+"""
+Lightweight server implementation for VLM-based robot control over REST API.
+This server translates VLM outputs to robot actions using the AutoEval format.
 
+Dependencies:
+pip install uvicorn fastapi numpy base64 json
+
+Usage:
+python vlm_policy_server.py --port 8000
+
+To make your server accessible on the open web, you can use ngrok or bore.pub
+With ngrok:
+  ngrok http 8000
+With bore.pub:
+  bore local 8000 --to bore.pub
+
+Note that if you aren't able to resolve bore.pub's DNS (test this with `ping bore.pub`), you can use their actual IP: 159.223.171.199
+"""
+
+import base64
+import io
+import json
 import logging
+import traceback
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
+import draccus
+import numpy as np
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from fastapi.responses import JSONResponse
+from PIL import Image
 
+from vlm_autoeval_robot_benchmark.models.translation import build_prompt
 from vlm_autoeval_robot_benchmark.models.vlm import VLM, ImageInput, VLMInput, VLMRequest
+from vlm_autoeval_robot_benchmark.utils.ecot_primitives.inverse_ecot_primitive_movements import (
+    text_to_move_vector,
+)
+from vlm_autoeval_robot_benchmark.utils.robot_utils import GRIPPER_INDEX, get_gripper_position
 
 # Configure logging
 logging.basicConfig(
@@ -17,256 +47,225 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize FastAPI app
-app = FastAPI(
-    title="VLM AutoEval Robot Benchmark",
-    description="API-driven VLM server for AutoEval robot benchmarking",
-    version="0.1.0",
-)
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+def image_server_helper(image: Any) -> str:
+    # Convert image to base64 string
+    if isinstance(image, (np.ndarray, list)):
+        # Convert list to numpy array if needed
+        if isinstance(image, list):
+            image = np.array(image, dtype=np.uint8)
 
-# Global VLM instance
-vlm_instance = None
+        # Convert numpy array to base64
+        pil_image = Image.fromarray(image.astype(np.uint8))
+        buffered = io.BytesIO()
+        pil_image.save(buffered, format="JPEG")
+        image_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+    else:
+        # Assume it's already a base64 string
+        image_b64 = image
 
-
-class RobotObservation(BaseModel):
-    """Robot observation from AutoEval."""
-
-    image: str  # Base64 encoded image
-    proprio: List[float] = Field(default_factory=list)  # Proprioceptive states
-    additional_info: Optional[Dict[str, Any]] = None
+    return image_b64
 
 
-class RobotCommand(BaseModel):
-    """Command to be sent to the robot."""
-
-    actions: List[float] = Field(default_factory=list)
-    success: bool = False
-    info: Optional[Dict[str, Any]] = None
-
-
-class VLMCommandRequest(BaseModel):
-    """Request for VLM command generation."""
-
-    observation: RobotObservation
-    task_description: str
-    history: Optional[List[Dict[str, Any]]] = None
-    model: str = "gpt-4-vision-preview"
-    system_prompt: Optional[str] = None
-
-
-def translate_command_to_action(command: str) -> List[float]:
-    """Translate a command from VLM into robot actions.
-
-    Args:
-        command: The command from the VLM
-
-    Returns:
-        The robot actions as a list of floats
+# === Server Interface ===
+class VLMPolicyServer:
     """
-    # This is a simplified version based on the ECoT code from the README
-    # In a real implementation, this would be more sophisticated
-
-    command = command.lower()
-
-    # Default action (no movement)
-    action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-
-    # Parse the command for movement directions
-    # Format: [x, y, z, roll, pitch, yaw, gripper]
-
-    # Forward/backward (x-axis)
-    if "forward" in command:
-        action[0] = 0.1
-    elif "backward" in command:
-        action[0] = -0.1
-
-    # Left/right (y-axis)
-    if "left" in command:
-        action[1] = 0.1
-    elif "right" in command:
-        action[1] = -0.1
-
-    # Up/down (z-axis)
-    if "up" in command and "tilt" not in command:
-        action[2] = 0.1
-    elif "down" in command and "tilt" not in command:
-        action[2] = -0.1
-
-    # Tilt up/down (roll, around x-axis)
-    if "tilt up" in command:
-        action[3] = 0.1
-    elif "tilt down" in command:
-        action[3] = -0.1
-
-    # Rotation (yaw, around z-axis)
-    if "rotate counterclockwise" in command:
-        action[5] = 0.1
-    elif "rotate clockwise" in command:
-        action[5] = -0.1
-
-    # Gripper
-    if "open gripper" in command:
-        action[6] = 0.1
-    elif "close gripper" in command:
-        action[6] = -0.1
-
-    # Return the normalized action
-    return action
-
-
-def get_default_system_prompt() -> str:
-    """Get the default system prompt for VLM."""
-    return """You are an expert robot control system. Your task is to control a robot arm to accomplish various tasks.
-
-You will receive an image from the robot's camera and a description of the task to perform.
-You should analyze the image and provide clear, concise instructions to move the robot.
-
-Use commands like:
-- "move forward/backward" (x-axis)
-- "move left/right" (y-axis)
-- "move up/down" (z-axis)
-- "tilt up/down" (rotation around x-axis)
-- "rotate clockwise/counterclockwise" (rotation around z-axis)
-- "open gripper/close gripper" (control the gripper)
-- "stop" (no movement)
-
-You can combine commands, for example "move forward, rotate clockwise".
-Keep your instructions simple and focused on one or two movements at a time.
-
-If you believe the task is complete, say "TASK COMPLETE" at the end of your response.
-"""
-
-
-def init_vlm_instance() -> None:
-    """Initialize the global VLM instance."""
-    global vlm_instance
-
-    if vlm_instance is None:
-        vlm_instance = VLM()
-        logger.info("VLM instance initialized")
-
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Startup event for the FastAPI app."""
-    init_vlm_instance()
-
-
-@app.get("/")
-async def root() -> dict[str, Any]:
-    """Root endpoint."""
-    return {
-        "name": "VLM AutoEval Robot Benchmark",
-        "version": "0.1.0",
-        "status": "running",
-        "timestamp": datetime.now().isoformat(),
-    }
-
-
-@app.post("/health")
-async def health() -> dict[str, Any]:
-    """Health check endpoint."""
-    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
-
-
-@app.post("/command")
-async def generate_command(request: VLMCommandRequest) -> RobotCommand:
-    """Generate a command for the robot based on the observation and task description.
-
-    Args:
-        request: The request containing the observation, task description, etc.
-
-    Returns:
-        The robot command
+    A server for VLM-based robot policy; exposes `/act` to predict an action for a given image + instruction.
+        => Takes in {"image": np.ndarray, "instruction": str, "proprio": Optional[np.ndarray]}
+        => Returns  {"action": np.ndarray}
     """
-    global vlm_instance
-    init_vlm_instance()
 
-    try:
-        # Prepare the image
-        image = ImageInput(data=request.observation.image, mime_type="image/jpeg")
+    def __init__(self, model: str = "gpt-4o-mini") -> None:
+        """
+        Initialize the VLM-based policy server
 
-        # Create a prompt using the task description
-        prompt = f"Task: {request.task_description}\n\n"
+        Args:
+            model: The VLM model to use
+        """
+        # Initialize VLM instance
+        self.vlm = VLM()
+        self.model = model
+        logger.info(f"VLM Policy Server initialized with model: {self.model}")
 
-        # Add history context if available
-        if request.history:
-            prompt += "Previous actions:\n"
-            for entry in request.history[-5:]:  # Only show the last 5 entries
-                if "command" in entry and "observation" in entry:
-                    prompt += f"- Command: {entry['command']}\n"
+    async def predict_action(self, payload: Dict[str, Any]) -> JSONResponse:
+        """
+        Predict a 7-dim action given an image + proprio + instruction
+        """
+        try:
+            if "encoded" in payload:
+                # Support cases where numpy arrays are "double-encoded" as strings
+                assert len(payload.keys()) == 1, "Only uses encoded payload!"
+                payload = json.loads(payload["encoded"])
 
-            prompt += "\n"
+            # Parse payload components
+            if "image" not in payload or "instruction" not in payload:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Missing required fields: image and instruction",
+                )
 
-        # Add proprioceptive state if available
-        if request.observation.proprio:
-            proprio_str = ", ".join([f"{val:.4f}" for val in request.observation.proprio])
-            prompt += f"Current robot state: [{proprio_str}]\n\n"
+            image = payload["image"]
+            instruction = payload["instruction"]
+            proprio = payload.get("proprio", None)  # proprio is optional
+            history = payload.get("history", None)  # history is optional
 
-        prompt += "Based on the image, what is the next action to take to complete the task?"
+            # Prepare the VLM request
+            image_b64 = image_server_helper(image)
+            vlm_image = ImageInput(data=image_b64, mime_type="image/jpeg")
+            gripper_position = (
+                None if proprio is None else get_gripper_position(proprio[GRIPPER_INDEX])
+            )
 
-        # Create a VLM request
-        vlm_request = VLMRequest(
-            vlm_input=VLMInput(
-                prompt=prompt,
-                images=[image],
-            ),
-            model=request.model,
-            system_prompt=request.system_prompt or get_default_system_prompt(),
-            max_tokens=512,
-            temperature=0.7,
+            # Create a prompt for the VLM
+            prompt = build_prompt(
+                env_desc="You are looking at a robotics environment.",
+                task_desc=instruction,
+                gripper_position=gripper_position,
+                history_flag=history is not None,
+            )
+
+            # Create history context if available
+            vlm_history = None
+            if history:
+                # Simplified history handling - would need to be expanded for real use
+                pass
+
+            # Create and send the VLM request
+            vlm_request = VLMRequest(
+                vlm_input=VLMInput(
+                    prompt=prompt,
+                    images=[vlm_image],
+                ),
+                model=self.model,
+                history=vlm_history,
+            )
+
+            # Generate VLM response
+            response = await self.vlm.generate(vlm_request)
+
+            # Parse the response into a move vector
+            try:
+                # Extract the JSON part of the response
+                json_str = response.text.split("```json")[1].split("```")[0].strip()
+                move_dict = json.loads(json_str)
+
+                # Convert to move vector
+                action = text_to_move_vector(move_dict)
+
+                # Check if the task is complete
+                task_complete = "TASK COMPLETE" in response.text.upper()
+
+                # Return the action as a JSON response
+                result = {
+                    "action": action.tolist(),
+                    "success": task_complete,
+                    "info": {
+                        "vlm_response": response.text,
+                        "model": response.model,
+                        "provider": response.provider,
+                        "response_ms": response.response_ms,
+                    },
+                }
+
+                return JSONResponse(content=result)
+
+            except Exception as e:
+                logger.error(f"Error parsing VLM response: {str(e)}")
+                logger.error(f"VLM response: {response.text}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to parse VLM response: {str(e)}",
+                )
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "Error processing request. "
+                    "Make sure your request complies with the expected format:\n"
+                    "{'image': np.ndarray/base64, 'instruction': str, 'proprio': Optional[np.ndarray]}\n"
+                    f"Error: {str(e)}; Traceback: {traceback.format_exc()}"
+                ),
+            )
+
+    def run(self, host: str = "0.0.0.0", port: int = 8000) -> None:
+        """
+        Run the server
+
+        Args:
+            host: Host address
+            port: Port number
+        """
+        self.app = FastAPI(
+            title="VLM AutoEval Robot Policy",
+            description="VLM-based robot policy server for AutoEval benchmarking",
         )
 
-        # Generate a response
-        if not vlm_instance:
-            raise HTTPException(status_code=500, detail="VLM instance not initialized")
-
-        response = await vlm_instance.generate(vlm_request)
-
-        # Check if the task is complete
-        task_complete = "TASK COMPLETE" in response.text.upper()
-
-        # Translate the command to actions
-        actions = translate_command_to_action(response.text)
-
-        return RobotCommand(
-            actions=actions,
-            success=task_complete,
-            info={
-                "vlm_response": response.text,
-                "model": response.model,
-                "provider": response.provider,
-                "response_ms": response.response_ms,
-                "usage": response.usage,
-            },
+        # Add CORS middleware
+        self.app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],  # Allows all origins
+            allow_credentials=True,
+            allow_methods=["*"],  # Allows all methods
+            allow_headers=["*"],  # Allows all headers
         )
 
-    except Exception as e:
-        logger.error(f"Error generating command: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Add health check endpoint
+        @self.app.get("/health")
+        async def health_check() -> Dict[str, Any]:
+            return {
+                "status": "healthy",
+                "model": self.model,
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        # Add root endpoint for basic info
+        @self.app.get("/")
+        async def root() -> Dict[str, Any]:
+            return {
+                "name": "VLM AutoEval Robot Policy",
+                "model": self.model,
+                "status": "running",
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        # Add the main action endpoint
+        self.app.post("/act")(self.predict_action)
+
+        # Configure server with increased timeout and request size limits
+        config = uvicorn.Config(
+            self.app,
+            host=host,
+            port=port,
+            timeout_keep_alive=120,
+            limit_concurrency=2,
+        )
+        server = uvicorn.Server(config)
+        server.run()
 
 
-def run_server(host: str = "0.0.0.0", port: int = 8000, log_level: str = "info") -> None:
-    """Run the FastAPI server.
+@dataclass
+class DeployConfig:
+    # Server Configuration
+    host: str = "0.0.0.0"  # Host IP Address
+    port: int = 8000  # Host Port
+    model: str = "gpt-4o-mini"  # VLM model to use
+
+
+@draccus.wrap()
+def deploy(cfg: DeployConfig) -> None:
+    """
+    Deploy the VLM policy server
 
     Args:
-        host: The host to bind to
-        port: The port to bind to
-        log_level: The log level
+        cfg: Deployment configuration
     """
-    uvicorn.run(
-        "vlm_autoeval_robot_benchmark.server:app", host=host, port=port, log_level=log_level
-    )
+    server = VLMPolicyServer(model=cfg.model)
+    server.run(cfg.host, port=cfg.port)
 
 
 if __name__ == "__main__":
-    run_server()
+    deploy()
