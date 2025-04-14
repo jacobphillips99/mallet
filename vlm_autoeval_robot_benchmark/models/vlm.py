@@ -466,10 +466,11 @@ def parse_vlm_response(response_text: str) -> t.Tuple[str, dict]:
     if not json_match:
         raise ValueError("Could not find JSON content between ``` markers")
 
-    json_str = json_match.group(1)
-
     # Clean up common JSON formatting issues
-    json_str = re.sub(r",(\s*})", r"\1", json_str)  # Remove trailing commas before closing braces
+    json_str = json_match.group(1)
+    json_str = re.sub(r",(\s*})", r"\1", json_str)
+    # check that None is not in the JSON string
+    json_str = re.sub(r"\bNone\b", "null", json_str)
 
     try:
         return description.strip(), json.loads(json_str)

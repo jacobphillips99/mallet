@@ -1,43 +1,35 @@
 #!/usr/bin/env python3
 """Test client for VLM AutoEval Robot Benchmark server."""
 
-import argparse
-from typing import Tuple
+from dataclasses import dataclass
 
+import draccus
 import numpy as np
 import requests
+from PIL import Image
 
-
-def generate_test_image(size: Tuple[int, int, int] = (256, 256, 3)) -> np.ndarray:
-    """Generate a simple test image."""
-    # Create a simple gradient image
-    img = np.zeros(size, dtype=np.uint8)
-    # Add a red square
-    img[50:200, 50:200, 0] = 255
-    # Add a blue circle
-    y, x = np.ogrid[0 : size[0], 0 : size[1]]
-    mask = (x - size[1] // 2) ** 2 + (y - size[0] // 2) ** 2 <= (50**2)
-    img[mask, 2] = 255
-    return img
+from test_utils import AUTO_EVAL_TEST_UTILS
 
 
 def test_server(
+    task: str,
     host: str = "localhost",
     port: int = 8000,
-    instruction: str = "Pick up the red cube and place it in the blue box.",
 ) -> bool:
     """Test the server with a simple request."""
     print(f"Testing server at http://{host}:{port}/act")
 
     # Generate test image and proprioceptive data
-    image = generate_test_image()
-    proprio = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+    image = np.array(Image.open(AUTO_EVAL_TEST_UTILS[task]["start_image"]))
+    proprio = np.arange(0.1, 0.8, 0.1).tolist()
+    instruction = AUTO_EVAL_TEST_UTILS[task]["task_instruction"]
 
     # Create payload
     payload = {
         "image": image.tolist(),  # Convert to list for JSON serialization
         "instruction": instruction,
         "proprio": proprio,
+        "test": True,
     }
 
     # Send request
@@ -52,21 +44,7 @@ def test_server(
             result = response.json()
             print("\nServer Response:")
             print(f"Action: {result.get('action')}")
-            print(f"Success: {result.get('success')}")
-
-            # Print VLM response if available
-            if result.get("info", {}).get("vlm_response"):
-                print("\nVLM Response (truncated):")
-                vlm_response = result["info"]["vlm_response"]
-                # Print first 300 chars to avoid too much output
-                print(f"{vlm_response[:300]}..." if len(vlm_response) > 300 else vlm_response)
-
-            # Print model info if available
-            if result.get("info", {}).get("model"):
-                print(f"\nModel: {result['info']['model']}")
-                print(f"Provider: {result['info']['provider']}")
-                print(f"Response time: {result['info']['response_ms']} ms")
-
+            print(f"VLM Response: {result.get('vlm_response')}")
             return True
         else:
             print(f"Error: Server returned status code {response.status_code}")
@@ -99,31 +77,38 @@ def test_health(host: str = "localhost", port: int = 8000) -> bool:
         return False
 
 
-if __name__ == "__main__":
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description="Test the VLM Policy Server")
-    parser.add_argument("--host", type=str, default="localhost", help="Server host")
-    parser.add_argument("--port", type=int, default=8000, help="Server port")
-    parser.add_argument(
-        "--instruction",
-        type=str,
-        default="Pick up the red block and place it in the blue box.",
-        help="Task instruction to send to the server",
-    )
-    args = parser.parse_args()
+@dataclass
+class TestConfig:
+    # Server Configuration
+    host: str = "localhost"  # Server host
+    port: int = 8000  # Server port
+    task: str = "eggplant_in_blue_sink"  # Task to test
 
+
+@draccus.wrap()
+def run_tests(cfg: TestConfig) -> None:
+    """
+    Test the VLM Policy Server with the specified configuration
+
+    Args:
+        cfg: Test configuration
+    """
     # Print test info
-    print(f"Testing VLM Policy Server at {args.host}:{args.port}")
+    print(f"Testing VLM Policy Server at {cfg.host}:{cfg.port}")
     print("=" * 50)
 
     # Test health endpoint
-    health_ok = test_health(args.host, args.port)
+    health_ok = test_health(cfg.host, cfg.port)
 
     print("\n" + "=" * 50 + "\n")
 
     # Test action endpoint
     if health_ok:
-        test_server(args.host, args.port, args.instruction)
+        test_server(cfg.task, cfg.host, cfg.port)
 
     print("\n" + "=" * 50)
     print("Tests completed!")
+
+
+if __name__ == "__main__":
+    run_tests()

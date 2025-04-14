@@ -35,7 +35,13 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 
 from vlm_autoeval_robot_benchmark.models.translation import build_prompt
-from vlm_autoeval_robot_benchmark.models.vlm import VLM, ImageInput, VLMInput, VLMRequest
+from vlm_autoeval_robot_benchmark.models.vlm import (
+    VLM,
+    ImageInput,
+    VLMInput,
+    VLMRequest,
+    parse_vlm_response,
+)
 from vlm_autoeval_robot_benchmark.utils.ecot_primitives.inverse_ecot_primitive_movements import (
     text_to_move_vector,
 )
@@ -140,37 +146,20 @@ class VLMPolicyServer:
                 history=vlm_history,
             )
 
-            # Generate VLM response
             response = await self.vlm.generate(vlm_request)
-
-            # Parse the response into a move vector
             try:
-                # Extract the JSON part of the response
-                json_str = response.text.split("```json")[1].split("```")[0].strip()
-                move_dict = json.loads(json_str)
+                # Extract the JSON part of the response, convert to move vector
+                _, move_dict = parse_vlm_response(response.text)
+                action = text_to_move_vector(move_dict).tolist()
 
-                # Convert to move vector
-                action = text_to_move_vector(move_dict)
-
-                # Check if the task is complete
-                task_complete = "TASK COMPLETE" in response.text.upper()
-
-                # Return the action as a JSON response
-                result = {
-                    "action": action.tolist(),
-                    "success": task_complete,
-                    "info": {
-                        "vlm_response": response.text,
-                        "model": response.model,
-                        "provider": response.provider,
-                        "response_ms": response.response_ms,
-                    },
-                }
-
-                return JSONResponse(content=result)
+                # Return the action as a JSON response, potentially including the VLM response
+                if payload.get("test", False):
+                    return JSONResponse(content=dict(action=action, vlm_response=response.text))
+                else:
+                    return JSONResponse(content=dict(action=action))
 
             except Exception as e:
-                logger.error(f"Error parsing VLM response: {str(e)}")
+                logger.error(f"Error parsing VLM response: {str(e)}, {traceback.format_exc()}")
                 logger.error(f"VLM response: {response.text}")
                 raise HTTPException(
                     status_code=500,

@@ -55,7 +55,7 @@ def unnormalize_bounded_action(k: str, normalized_action_value: float) -> tuple[
 
 
 def text_to_move_vector(
-    payload: dict[str, tuple[str, float, str]],
+    payload: dict[str, tuple[str | None, float, str]],
 ) -> np.ndarray:
     # payload is a dict of the form {'axis': ['direction', magnitude, 'explanation']}
     # except gripper, which is just ['direction', 'explanation']
@@ -70,6 +70,9 @@ def text_to_move_vector(
         pred_direction, pred_magnitude, _ = payload[k]
         if k == "gripper":
             # gripper ignores magnitude, just use the signed direction
+            if isinstance(pred_direction, str) and pred_direction.lower() == "none":
+                # we don't want None outputs for gripper but handle it just in case
+                pred_direction = None
             maybe_pred_direction = REVERSE_DIRECTION_NAMES[k].get(pred_direction)
             if maybe_pred_direction is None:
                 raise ValueError(
@@ -79,7 +82,9 @@ def text_to_move_vector(
             move_vector[i] = np.clip(maybe_pred_direction, 0, 1)
         else:
             # early exit on None
-            if pred_direction.lower() in ["none", None]:
+            if (
+                isinstance(pred_direction, str) and pred_direction.lower() == "none"
+            ) or pred_direction is None:
                 move_vector[i] = 0
             else:
                 if pred_direction not in REVERSE_DIRECTION_NAMES[k]:

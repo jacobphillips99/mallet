@@ -3,8 +3,12 @@ import base64
 import copy
 import logging
 import traceback
+from dataclasses import dataclass
 from pathlib import Path
 
+import draccus
+
+from test_utils import AUTO_EVAL_TEST_UTILS
 from vlm_autoeval_robot_benchmark.models.vlm import (
     VLM,
     ImageInput,
@@ -16,13 +20,15 @@ from vlm_autoeval_robot_benchmark.models.vlm import (
 logger = logging.getLogger(__name__)
 
 
-MODEL = "gpt-4o-mini"
-# MODEL = "gemini/gemini-2.0-flash"
-# MODEL = "gemini/gemini-2.5-pro-preview-03-25"
-# MODEL = "claude-3-5-sonnet-20240620"
+@dataclass
+class TestConfig:
+    # VLM Configuration
+    model: str = "gpt-4o-mini"
+    task: str = "eggplant_in_blue_sink"
+    parallel_requests: int = 1
 
 
-async def test_vlm() -> None:
+async def test_vlm(cfg: TestConfig) -> None:
     # Initialize VLM
     vlm = VLM()
 
@@ -31,7 +37,7 @@ async def test_vlm() -> None:
         vlm_input=VLMInput(
             prompt="What is 2+2?",
         ),
-        model=MODEL,
+        model=cfg.model,
     )
 
     print("\n=== Testing text-only request ===")
@@ -44,15 +50,11 @@ async def test_vlm() -> None:
     except Exception as e:
         print(f"Text request failed: {e}")
 
-    # Test 2: Vision request with an image and history
-    # goal image of put the eggplant in the blue sink = eggplant in blue sink
-    test_image_path = Path("assets/auto_eval_goal_images/put the eggplant in the blue sink.png")
-    # goal image of put the eggplant in the yellow basket = eggplant in yellow basket
-    history_image_path = Path(
-        "assets/auto_eval_goal_images/put the eggplant in the yellow basket.png"
-    )
+    task = cfg.task
+    history_image_path = Path(AUTO_EVAL_TEST_UTILS[task]["start_image"])
+    image_path = Path(AUTO_EVAL_TEST_UTILS[task]["goal_image"])
 
-    with open(test_image_path, "rb") as f:
+    with open(image_path, "rb") as f:
         image_data = f.read()
     with open(history_image_path, "rb") as f:
         history_image_data = f.read()
@@ -81,11 +83,11 @@ async def test_vlm() -> None:
                 )
             ],
         ),
-        model=MODEL,
+        model=cfg.model,
         history=history,
     )
 
-    many_vision_requests = [copy.deepcopy(vision_request) for _ in range(1)]
+    many_vision_requests = [copy.deepcopy(vision_request) for _ in range(cfg.parallel_requests)]
     for i, req in enumerate(many_vision_requests):
         req.vlm_input.prompt += f" ({i})"
 
@@ -106,5 +108,16 @@ async def test_vlm() -> None:
             logger.error(f"Vision request {i} failed: {e}; traceback: {traceback.format_exc()}")
 
 
+@draccus.wrap()
+def run_tests(cfg: TestConfig) -> None:
+    """
+    Run VLM tests with the specified configuration
+
+    Args:
+        cfg: Test configuration
+    """
+    asyncio.run(test_vlm(cfg))
+
+
 if __name__ == "__main__":
-    asyncio.run(test_vlm())
+    run_tests()

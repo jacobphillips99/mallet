@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Terminal-based monitoring tool for API rate limits."""
 
-import argparse
 import curses
 import json
 import os
 import time
 import typing as t
+from dataclasses import dataclass
+
+import draccus
 
 from vlm_autoeval_robot_benchmark.models.rate_limit import RATE_LIMIT_STATS_PATH
 
@@ -230,27 +232,24 @@ class RateMonitor:
                 pass
 
 
-def main() -> None:
-    """Main entry point."""
-    parser = argparse.ArgumentParser(description="Monitor API rate limits")
-    parser.add_argument(
-        "--stats-path",
-        "-p",
-        default=RATE_LIMIT_STATS_PATH,
-        help=f"Path to stats file (default: {RATE_LIMIT_STATS_PATH})",
-    )
-    parser.add_argument(
-        "--refresh-rate",
-        "-r",
-        type=float,
-        default=0.5,
-        help="Refresh rate in seconds (default: 0.5)",
-    )
+@dataclass
+class MonitorConfig:
+    """Configuration for the rate monitor."""
 
-    args = parser.parse_args()
+    stats_path: str = RATE_LIMIT_STATS_PATH  # Path to stats file
+    refresh_rate: float = 0.5  # Refresh rate in seconds
 
+
+@draccus.wrap()
+def main(cfg: MonitorConfig) -> None:
+    """
+    Monitor API rate limits
+
+    Args:
+        cfg: Monitor configuration
+    """
     # Run with curses
-    monitor = RateMonitor(args.stats_path, args.refresh_rate)
+    monitor = RateMonitor(cfg.stats_path, cfg.refresh_rate)
     curses.wrapper(monitor.run)
 
 
