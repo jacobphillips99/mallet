@@ -2,7 +2,6 @@
 """Test client for VLM AutoEval Robot Benchmark server."""
 
 from dataclasses import dataclass
-from urllib.parse import urlparse
 
 import draccus
 import numpy as np
@@ -18,6 +17,8 @@ def test_server(
     port: int,
 ) -> bool:
     """Test the server with a simple request."""
+    print(f"Testing server at {host}:{port}/act")
+
     # Generate test image and proprioceptive data
     image = np.array(Image.open(AUTO_EVAL_TEST_UTILS[task]["start_image"]))
     proprio = np.random.rand(7).tolist()
@@ -35,17 +36,12 @@ def test_server(
     # Send request
     try:
         print(f"Sending request with instruction: '{instruction}'")
-
-        # Check if host is a full URL (like Modal endpoint) or just a hostname
-        parsed_url = urlparse(host)
-        if parsed_url.scheme:
-            # If host is a full URL (like Modal endpoint), use it directly
-            url = host
-        else:
-            # If host is just a hostname (like localhost), construct the full URL
-            url = f"http://{host}:{port}/act"
-
-        response = requests.post(url, json=payload, headers={"Content-Type": "application/json"})
+        response = requests.post(
+            # f"{host}:{port}/act",
+            f"{host}/act",
+            json=payload,
+            headers={"Content-Type": "application/json"},
+        )
 
         # Check response
         if response.status_code == 200:
@@ -60,7 +56,7 @@ def test_server(
             return False
 
     except requests.exceptions.ConnectionError:
-        print(f"Connection error: Could not connect to server at {url}")
+        print(f"Connection error: Could not connect to server at {host}:{port}")
         print("Make sure the server is running and accessible.")
         return False
     except Exception as e:
@@ -68,20 +64,12 @@ def test_server(
         return False
 
 
-def test_health(host: str = "localhost", port: int = 8000) -> bool:
+def test_health(host: str, port: int) -> bool:
     """Test the health endpoint."""
     try:
-        # Check if host is a full URL or just a hostname
-        parsed_url = urlparse(host)
-        if parsed_url.scheme:
-            # If host is a full URL, append /health
-            url = f"{host}/health" if not host.endswith("/health") else host
-        else:
-            # If host is just a hostname, construct the full URL
-            url = f"http://{host}:{port}/health"
-
-        print(f"Testing health endpoint at {url}")
-        response = requests.get(url)
+        print(f"Testing health endpoint at {host}:{port}/health")
+        # response = requests.get(f"{host}:{port}/health")
+        response = requests.get(f"{host}/health")
         if response.status_code == 200:
             print("Health check successful!")
             print(f"Response: {response.json()}")
@@ -97,10 +85,10 @@ def test_health(host: str = "localhost", port: int = 8000) -> bool:
 @dataclass
 class TestConfig:
     # Server Configuration
-    # For local testing: host="localhost", port=8000
-    # For Modal endpoint: host="https://jacobphillips99--vlm-robot-policy-server-act.modal.run"
-    host: str = "https://jacobphillips99--vlm-robot-policy-server-act.modal.run"
-    port: int = 8000  # Only used when host is a hostname without scheme
+    # host: str = "localhost"  # Server host
+    host: str = "https://jacobphillips99--vlm-robot-policy-server-fastapi-app.modal.run"
+    # host: str = "https://jacobphillips99--vlm-robot-policy-server-my-web-server.modal.run"
+    port: int = 8000  # Server port
     task: str = "eggplant_in_blue_sink"  # Task to test
     health_check: bool = False  # Whether to run health check
 
@@ -114,11 +102,7 @@ def run_tests(cfg: TestConfig) -> None:
         cfg: Test configuration
     """
     # Print test info
-    parsed_url = urlparse(cfg.host)
-    if parsed_url.scheme:
-        print(f"Testing VLM Policy Server at {cfg.host}")
-    else:
-        print(f"Testing VLM Policy Server at http://{cfg.host}:{cfg.port}")
+    print(f"Testing VLM Policy Server at {cfg.host}:{cfg.port}")
     print("=" * 50)
 
     # Test health endpoint

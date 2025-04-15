@@ -10,16 +10,10 @@ modal deploy modal_server.py  # Deploy to Modal
 modal serve modal_server.py   # Run locally for development
 """
 
-import asyncio
 import os
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict
 
 import modal
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from vlm_autoeval_robot_benchmark.server import VLMPolicyServer
 
@@ -27,7 +21,6 @@ from vlm_autoeval_robot_benchmark.server import VLMPolicyServer
 DEFAULT_MODEL = "gemini/gemini-2.5-pro-preview-03-25"
 DEFAULT_CONCURRENCY = 1
 DEFAULT_TIMEOUT = 300
-PORT = 8000
 
 # Define the Modal image
 image = (
@@ -67,58 +60,7 @@ app = modal.App(
     ],
 )
 
-# Initialize the VLM policy server globally
-server = VLMPolicyServer(model=DEFAULT_MODEL)
 
-# Create a FastAPI app
-web_app = FastAPI(
-    title="VLM AutoEval Robot Policy",
-    description="VLM-based robot policy server for AutoEval benchmarking",
-)
-
-# Add CORS middleware
-web_app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
-    allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
-)
-
-
-# Add the /act route
-@web_app.post("/act")
-async def act_endpoint(payload: Dict[str, Any]) -> JSONResponse:
-    """
-    Process an action request.
-    Takes in an image, instruction, and optional proprioception data.
-    Returns a robot action.
-    """
-    return await server.predict_action(payload)
-
-
-# Add health check endpoint
-@web_app.get("/health")
-async def health_check() -> Dict[str, Any]:
-    return {
-        "status": "healthy",
-        "model": DEFAULT_MODEL,
-        "timestamp": datetime.now().isoformat(),
-    }
-
-
-# Add root endpoint for basic info
-@web_app.get("/")
-async def root() -> Dict[str, Any]:
-    return {
-        "name": "VLM AutoEval Robot Policy",
-        "model": DEFAULT_MODEL,
-        "status": "running",
-        "timestamp": datetime.now().isoformat(),
-    }
-
-
-# Define the web endpoint using the FastAPI app
 @app.function(
     max_containers=DEFAULT_CONCURRENCY,
     timeout=DEFAULT_TIMEOUT,
@@ -126,7 +68,17 @@ async def root() -> Dict[str, Any]:
 @modal.asgi_app()
 def fastapi_app():
     """
-    Modal ASGI app that serves the VLM policy server with all routes (/act, /health, /).
-    This ensures the server is accessible at the expected paths.
+    Modal ASGI app that serves the VLM policy server.
+    This reuses the complete FastAPI app from VLMPolicyServer.
     """
-    return web_app
+    # Initialize the VLM policy server
+    server = VLMPolicyServer(model=DEFAULT_MODEL)
+    # Create and return the FastAPI app with all routes
+    return server._create_app()
+
+
+# @modal.web_server(port=8000)
+# def my_web_server():
+#     import subprocess
+
+#     subprocess.Popen("python vlm_autoeval_robot_benchmark/server.py", shell=True)

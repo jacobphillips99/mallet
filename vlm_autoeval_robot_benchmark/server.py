@@ -192,41 +192,7 @@ class VLMPolicyServer:
             host: Host address
             port: Port number
         """
-        self.app = FastAPI(
-            title="VLM AutoEval Robot Policy",
-            description="VLM-based robot policy server for AutoEval benchmarking",
-        )
-
-        # Add CORS middleware
-        self.app.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"],  # Allows all origins
-            allow_credentials=True,
-            allow_methods=["*"],  # Allows all methods
-            allow_headers=["*"],  # Allows all headers
-        )
-
-        # Add health check endpoint
-        @self.app.get("/health")
-        async def health_check() -> Dict[str, Any]:
-            return {
-                "status": "healthy",
-                "model": self.model,
-                "timestamp": datetime.now().isoformat(),
-            }
-
-        # Add root endpoint for basic info
-        @self.app.get("/")
-        async def root() -> Dict[str, Any]:
-            return {
-                "name": "VLM AutoEval Robot Policy",
-                "model": self.model,
-                "status": "running",
-                "timestamp": datetime.now().isoformat(),
-            }
-
-        # Add the main action endpoint
-        self.app.post("/act")(self.predict_action)
+        self.app = self._create_app()
 
         # Configure server with increased timeout and request size limits
         config = uvicorn.Config(
@@ -238,8 +204,54 @@ class VLMPolicyServer:
         )
         server = uvicorn.Server(config)
 
+        server.run()
+
+    def _create_app(self) -> FastAPI:
+        """
+        Create and configure a FastAPI app with all routes.
+        This is exposed as a separate method to allow reuse by other deployments (e.g., Modal).
+
+        Returns:
+            FastAPI: The configured FastAPI application
+        """
+        app = FastAPI(
+            title="VLM AutoEval Robot Policy",
+            description="VLM-based robot policy server for AutoEval benchmarking",
+        )
+
+        # Add CORS middleware
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],  # Allows all origins
+            allow_credentials=True,
+            allow_methods=["*"],  # Allows all methods
+            allow_headers=["*"],  # Allows all headers
+        )
+
+        # Add health check endpoint
+        @app.get("/health")
+        async def health_check() -> Dict[str, Any]:
+            return {
+                "status": "healthy",
+                "model": self.model,
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        # Add root endpoint for basic info
+        @app.get("/")
+        async def root() -> Dict[str, Any]:
+            return {
+                "name": "VLM AutoEval Robot Policy",
+                "model": self.model,
+                "status": "running",
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        # Add the main action endpoint
+        app.post("/act")(self.predict_action)
+
         # Add a startup event to ensure rate limiter monitoring is integrated with FastAPI's event loop
-        @self.app.on_event("startup")
+        @app.on_event("startup")
         async def startup_event():
             """Run when the application starts."""
             # Ensure rate limiter monitoring uses this event loop
@@ -248,7 +260,7 @@ class VLMPolicyServer:
                 rate_limiter._monitor_task = loop.create_task(rate_limiter._monitor_loop())
                 logger.info(f"Started rate limit monitoring in FastAPI's event loop")
 
-        server.run()
+        return app
 
 
 @dataclass
