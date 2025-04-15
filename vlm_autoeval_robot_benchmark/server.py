@@ -17,6 +17,7 @@ With bore.pub:
 Note that if you aren't able to resolve bore.pub's DNS (test this with `ping bore.pub`), you can use their actual IP: 159.223.171.199
 """
 
+import asyncio
 import base64
 import io
 import json
@@ -34,6 +35,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from PIL import Image
 
+from vlm_autoeval_robot_benchmark.models.rate_limit import rate_limiter
 from vlm_autoeval_robot_benchmark.models.translation import PromptTemplate, build_standard_prompt
 from vlm_autoeval_robot_benchmark.models.vlm import (
     VLM,
@@ -158,7 +160,7 @@ class VLMPolicyServer:
                 if payload.get("test", False):
                     return JSONResponse(content=dict(action=action, vlm_response=response.text))
                 else:
-                    return JSONResponse(content=dict(action=action))
+                    return JSONResponse(content=action)
 
             except Exception as e:
                 logger.error(f"Error parsing VLM response: {str(e)}, {traceback.format_exc()}")
@@ -232,9 +234,20 @@ class VLMPolicyServer:
             host=host,
             port=port,
             timeout_keep_alive=120,
-            limit_concurrency=2,
+            limit_concurrency=None,  # Remove concurrency limit entirely
         )
         server = uvicorn.Server(config)
+
+        # Add a startup event to ensure rate limiter monitoring is integrated with FastAPI's event loop
+        @self.app.on_event("startup")
+        async def startup_event():
+            """Run when the application starts."""
+            # Ensure rate limiter monitoring uses this event loop
+            if rate_limiter._monitor_running and rate_limiter._monitor_task is None:
+                loop = asyncio.get_running_loop()
+                rate_limiter._monitor_task = loop.create_task(rate_limiter._monitor_loop())
+                logger.info(f"Started rate limit monitoring in FastAPI's event loop")
+
         server.run()
 
 
