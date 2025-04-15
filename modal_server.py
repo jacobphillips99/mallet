@@ -10,10 +10,8 @@ modal deploy modal_server.py  # Deploy to Modal
 modal serve modal_server.py   # Run locally for development
 """
 
-import os
-from datetime import datetime
-
 import modal
+from fastapi import FastAPI
 
 from vlm_autoeval_robot_benchmark.server import VLMPolicyServer
 
@@ -66,7 +64,7 @@ app = modal.App(
     timeout=DEFAULT_TIMEOUT,
 )
 @modal.asgi_app()
-def fastapi_app():
+def fastapi_app() -> FastAPI:
     """
     Modal ASGI app that serves the VLM policy server.
     This reuses the complete FastAPI app from VLMPolicyServer.
@@ -75,10 +73,3 @@ def fastapi_app():
     server = VLMPolicyServer(model=DEFAULT_MODEL)
     # Create and return the FastAPI app with all routes
     return server._create_app()
-
-
-# @modal.web_server(port=8000)
-# def my_web_server():
-#     import subprocess
-
-#     subprocess.Popen("python vlm_autoeval_robot_benchmark/server.py", shell=True)

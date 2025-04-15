@@ -252,13 +252,13 @@ class VLMPolicyServer:
 
         # Add a startup event to ensure rate limiter monitoring is integrated with FastAPI's event loop
         @app.on_event("startup")
-        async def startup_event():
+        async def startup_event() -> None:
             """Run when the application starts."""
             # Ensure rate limiter monitoring uses this event loop
             if rate_limiter._monitor_running and rate_limiter._monitor_task is None:
                 loop = asyncio.get_running_loop()
                 rate_limiter._monitor_task = loop.create_task(rate_limiter._monitor_loop())
-                logger.info(f"Started rate limit monitoring in FastAPI's event loop")
+                logger.info("Started rate limit monitoring in FastAPI's event loop")
 
         return app
 
