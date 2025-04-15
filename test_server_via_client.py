@@ -21,7 +21,8 @@ def test_server(
 
     # Generate test image and proprioceptive data
     image = np.array(Image.open(AUTO_EVAL_TEST_UTILS[task]["start_image"]))
-    proprio = np.arange(0.1, 0.8, 0.1).tolist()
+    proprio = np.random.rand(7).tolist()
+    proprio[-1] = 1  # gripper is open
     instruction = AUTO_EVAL_TEST_UTILS[task]["task_instruction"]
 
     # Create payload
@@ -83,6 +84,7 @@ class TestConfig:
     host: str = "localhost"  # Server host
     port: int = 8000  # Server port
     task: str = "eggplant_in_blue_sink"  # Task to test
+    health_check: bool = False  # Whether to run health check
 
 
 @draccus.wrap()
@@ -98,13 +100,13 @@ def run_tests(cfg: TestConfig) -> None:
     print("=" * 50)
 
     # Test health endpoint
-    health_ok = test_health(cfg.host, cfg.port)
-
-    print("\n" + "=" * 50 + "\n")
+    if cfg.health_check:
+        health_ok = test_health(cfg.host, cfg.port)
+        print(f"Health check: {'OK' if health_ok else 'FAILED'}")
+        print("\n" + "=" * 50 + "\n")
 
     # Test action endpoint
-    if health_ok:
-        test_server(cfg.task, cfg.host, cfg.port)
+    test_server(cfg.task, cfg.host, cfg.port)
 
     print("\n" + "=" * 50)
     print("Tests completed!")

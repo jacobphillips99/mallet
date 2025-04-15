@@ -1,15 +1,17 @@
 import typing as t
 
+from vlm_autoeval_robot_benchmark.models.translation import (
+    HISTORY_PREFIX,
+    HISTORY_SUFFIX,
+    PromptTemplate,
+)
 from vlm_autoeval_robot_benchmark.models.vlm import (
     VLM,
     VLMRequest,
     VLMResponse,
-    create_vlm_request,
+    create_modular_vlm_request,
     parse_vlm_responses,
 )
-
-HISTORY_PREFIX = "This shows the history of a robotics episode."
-HISTORY_SUFFIX = "Consider this history to answer the question below. Describe the history in detail before answering the question below."
 
 
 async def run_episode(
@@ -37,12 +39,15 @@ async def run_episode(
 
         # add request to list
         reqs.append(
-            create_vlm_request(
+            create_modular_vlm_request(
                 model,
                 img_bytes_list[i],
-                env_desc,
-                task_desc,
-                gripper_position=gripper_descriptors[i],
+                prompt_template=PromptTemplate(
+                    env_desc=env_desc,
+                    task_desc=task_desc,
+                    gripper_position=gripper_descriptors[i],
+                    history_flag=True,
+                ),
                 history_dict=current_history,
             )
         )

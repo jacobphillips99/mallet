@@ -53,6 +53,12 @@ async def test_vlm(cfg: TestConfig) -> None:
     task = cfg.task
     history_image_path = Path(AUTO_EVAL_TEST_UTILS[task]["start_image"])
     image_path = Path(AUTO_EVAL_TEST_UTILS[task]["goal_image"])
+    if not image_path.exists():
+        logger.warning(f"Image path {image_path} does not exist")
+        return
+    if not history_image_path.exists():
+        logger.warning(f"History image path {history_image_path} does not exist")
+        return
 
     with open(image_path, "rb") as f:
         image_data = f.read()
@@ -76,7 +82,7 @@ async def test_vlm(cfg: TestConfig) -> None:
 
     vision_request = VLMRequest(
         vlm_input=VLMInput(
-            prompt="The image below shows the end state of the scene. What changed from the historical image to the one below?",
+            prompt="The image below shows the end state of the scene. What actions would the robot have to task to reach this end state?",
             images=[
                 ImageInput(
                     data=base64.b64encode(image_data).decode("utf-8"), mime_type="image/jpeg"

@@ -34,7 +34,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from PIL import Image
 
-from vlm_autoeval_robot_benchmark.models.translation import build_prompt
+from vlm_autoeval_robot_benchmark.models.translation import PromptTemplate, build_standard_prompt
 from vlm_autoeval_robot_benchmark.models.vlm import (
     VLM,
     ImageInput,
@@ -123,18 +123,20 @@ class VLMPolicyServer:
             )
 
             # Create a prompt for the VLM
-            prompt = build_prompt(
-                env_desc="You are looking at a robotics environment.",
-                task_desc=instruction,
-                gripper_position=gripper_position,
-                history_flag=history is not None,
+            prompt = build_standard_prompt(
+                prompt_template=PromptTemplate(
+                    env_desc="You are looking at a robotics environment.",
+                    task_desc=instruction,
+                    gripper_position=gripper_position,
+                    history_flag=history is not None,
+                )
             )
 
             # Create history context if available
-            vlm_history = None
-            if history:
-                # Simplified history handling - would need to be expanded for real use
-                pass
+            # vlm_history = None
+            # if history:
+            #     # Simplified history handling - would need to be expanded for real use
+            #     pass
 
             # Create and send the VLM request
             vlm_request = VLMRequest(
@@ -143,7 +145,7 @@ class VLMPolicyServer:
                     images=[vlm_image],
                 ),
                 model=self.model,
-                history=vlm_history,
+                history=None,
             )
 
             response = await self.vlm.generate(vlm_request)
@@ -241,7 +243,7 @@ class DeployConfig:
     # Server Configuration
     host: str = "0.0.0.0"  # Host IP Address
     port: int = 8000  # Host Port
-    model: str = "gpt-4o-mini"  # VLM model to use
+    model: str = "gemini/gemini-2.5-pro-preview-03-25"  # VLM model to use
 
 
 @draccus.wrap()

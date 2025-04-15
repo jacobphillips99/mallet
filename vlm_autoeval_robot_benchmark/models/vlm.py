@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 from vlm_autoeval_robot_benchmark.config import RateLimitConfig, load_rate_limits
 from vlm_autoeval_robot_benchmark.models.rate_limit import rate_limiter
-from vlm_autoeval_robot_benchmark.models.translation import build_prompt
+from vlm_autoeval_robot_benchmark.models.translation import PromptTemplate, build_standard_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +109,7 @@ class VLMRequest(BaseModel):
     timeout: float = 120.0
     extra_params: Dict[str, Any] = Field(default_factory=dict)
     history: Optional[VLMHistory] = None  # List of previous inputs in the conversation
+    double_prompt: bool = True
 
 
 class VLM:
@@ -188,22 +189,46 @@ class VLM:
         return formatted_images
 
     def _prepare_content(
-        self, vlm_input: VLMInput, image_key: str = "Image"
+        self,
+        vlm_input: VLMInput,
+        history: Optional[VLMHistory] = None,
+        double_prompt: bool = False,
+        image_key: str = "Image",
     ) -> List[Dict[str, Any]]:
-        if vlm_input.images:
-            # Format for multi-modal models
-            content = [{"type": "text", "text": vlm_input.prompt}]
+        text_content = {"type": "text", "text": vlm_input.prompt}
+        image_content, history_content, douple_prompt_content = [], [], []
 
+        if vlm_input.images:
             # interleave text breaks with images
             formatted_images = self._prepare_images(vlm_input.images)
-            interleaved_content = [
+            present_content = [
                 [{"type": "text", "text": f"{image_key} {i+1}:"}, formatted_img_msg]
                 for i, formatted_img_msg in enumerate(formatted_images)
             ]
-            content.extend(sum(interleaved_content, []))
+            image_content = sum(present_content, [])
+
+        if history:
+            history_content = self._prepare_historical_content(history)
+
+        if double_prompt:
+            douple_prompt_content = [
+                {
+                    "type": "text",
+                    "text": "Here are the instructions again:\n" + vlm_input.prompt,
+                }
+            ]
+
+        content = [text_content]
+        if history:
+            if history.placement == "before":
+                content.extend(history_content + image_content)
+            elif history.placement == "after":
+                content.extend(image_content + history_content)
+            else:
+                raise ValueError(f"Invalid history placement: {history.placement}")
         else:
-            # Text-only message
-            content = [{"type": "text", "text": vlm_input.prompt}]
+            content.extend(image_content)
+        content.extend(douple_prompt_content)
         return content
 
     def _prepare_historical_content(self, history: VLMHistory) -> List[Dict[str, Any]]:
@@ -287,18 +312,9 @@ class VLM:
 
         # Prepare content for the user message
         vlm_input = request.vlm_input
-        content = self._prepare_content(vlm_input)
-
-        # Add history if provided
-        if request.history:
-            historical_content = self._prepare_historical_content(request.history)
-            if request.history.placement == "before":
-                content = historical_content + content
-            elif request.history.placement == "after":
-                content = content + historical_content
-            else:
-                raise ValueError(f"Invalid placement: {request.history.placement}")
-
+        content = self._prepare_content(
+            vlm_input, history=request.history, double_prompt=request.double_prompt
+        )
         user_message["content"] = content
         messages.append(user_message)
 
@@ -426,31 +442,52 @@ def load_image(image_path_or_bytes: t.Union[str, bytes]) -> bytes:
         return f.read()
 
 
-def create_vlm_request(
+def create_modular_vlm_request(
     model: str,
-    image_path_or_bytes: t.Union[str, bytes],
-    env_desc: str,
-    task_desc: str,
-    gripper_position: t.Optional[str] = None,
+    current_image_path_or_bytes: t.Union[str, bytes],
+    prompt_template: PromptTemplate,
     history_dict: t.Optional[dict[str, t.Union[str, list[tuple[str, list[bytes]]]]]] = None,
+    history_placement: str = "before",
+    image_label: str = "Current Image",
 ) -> VLMRequest:
-    """Create a VLM request for the given configuration."""
-    image_data = load_image(image_path_or_bytes)
+    """Create a VLM request with more flexible modular configuration.
+
+    This allows more control over prompt construction and image placement.
+
+    Args:
+        model: The model name
+        current_image_path_or_bytes: The current image path or raw bytes
+        prompt_template: A configured PromptTemplate object
+        history_dict: Optional history dictionary
+        history_placement: Where to place history in relation to current content
+        image_label: Label to use for the current image
+
+    Returns:
+        The constructed VLM request
+    """
+    image_data = load_image(current_image_path_or_bytes)
+
+    # Process history if provided
+    history = None
     if history_dict is not None:
         if not isinstance(history_dict.get("vlm_inputs"), list):
             raise ValueError("history['vlm_inputs'] must be a list")
         history = VLMHistory.from_dict(history_dict)
-    else:
-        history = None
+        history.placement = history_placement
+
+    # Build the prompt from template
+    prompt = build_standard_prompt(prompt_template)
 
     return VLMRequest(
         model=model,
         vlm_input=VLMInput(
-            prompt=build_prompt(
-                env_desc, task_desc, gripper_position, history_flag=history is not None
-            ),
+            prompt=prompt,
             images=[
-                ImageInput(data=base64.b64encode(image_data).decode("utf-8"), mime_type="image/png")
+                ImageInput(
+                    data=base64.b64encode(image_data).decode("utf-8"),
+                    mime_type="image/png",
+                    label=image_label,
+                )
             ],
         ),
         history=history,
@@ -482,6 +519,14 @@ def parse_vlm_response(response_text: str) -> t.Tuple[str, dict]:
 def parse_vlm_responses(
     responses: List[Tuple[int, Optional[VLMResponse], Optional[str]]],
 ) -> List[Dict[str, Any]]:
+    """Parse multiple VLM responses.
+
+    Args:
+        responses: List of tuples (index, response, exception)
+
+    Returns:
+        List of parsed responses
+    """
     results = []
     for i, response, maybe_exception in responses:
         if maybe_exception or response is None:

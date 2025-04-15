@@ -3,7 +3,7 @@ AUTO_EVAL_TEST_UTILS = {
     "eggplant_in_blue_sink": {
         "start_image": "assets/auto_eval_goal_images/put the eggplant in the yellow basket.png",
         "task_instruction": "Put the eggplant in the blue sink.",
-        "goal_image": "assets/auto_eval_goal_image/put the eggplant in the blue sink.png",
+        "goal_image": "assets/auto_eval_goal_images/put the eggplant in the blue sink.png",
     },
     "eggplant_in_yellow_basket": {
         "start_image": "assets/auto_eval_goal_images/put the eggplant in the blue sink.png",

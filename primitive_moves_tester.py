@@ -66,7 +66,12 @@ position of "open the drawer". At this point, we know
 import asyncio
 from typing import Any
 
-from vlm_autoeval_robot_benchmark.models.vlm import VLM, create_vlm_request, parse_vlm_responses
+from vlm_autoeval_robot_benchmark.models.translation import PromptTemplate
+from vlm_autoeval_robot_benchmark.models.vlm import (
+    VLM,
+    create_modular_vlm_request,
+    parse_vlm_responses,
+)
 
 # Constants
 # MODEL = "gpt-4o"
@@ -114,7 +119,11 @@ async def run_test(
 ) -> list[dict[str, Any]]:
     """Run the test according to the given configuration."""
     vlm = VLM()
-    request = create_vlm_request(model, image_path, env_desc, task_desc)
+    request = create_modular_vlm_request(
+        model,
+        image_path,
+        PromptTemplate(env_desc=env_desc, task_desc=task_desc, history_flag=True),
+    )
     responses = await vlm.generate_parallel([request] * num_samples)
     results = parse_vlm_responses(responses)
     return results
@@ -155,7 +164,6 @@ async def main() -> None:
         AUTOEVAL_IMAGE_PATHS[task_key],
         num_samples=num_samples,
     )
-
     # Print the results
     print_test_results(results)
 
