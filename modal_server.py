@@ -27,7 +27,7 @@ from vlm_autoeval_robot_benchmark.server import VLMPolicyServer
 
 # Define environment variables with defaults
 DEFAULT_MODEL = "gemini/gemini-2.5-pro-preview-03-25"
-CONCURRENCY = 1
+CONCURRENCY = 100
 TIMEOUT = 300
 
 # Read from environment variables or use defaults; this gets around Modal not accepting parameters during deployment
@@ -80,8 +80,9 @@ app = modal.App(
 
 
 @app.function(
-    max_containers=CONCURRENCY,
+    max_containers=1,  # we want 1 container servering all reqs
     timeout=TIMEOUT,
+    concurrency_limit=CONCURRENCY,
 )
 @modal.asgi_app()
 def fastapi_app() -> FastAPI:

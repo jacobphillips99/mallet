@@ -241,7 +241,6 @@ class VLMPolicyServer:
                 "timestamp": datetime.now().isoformat(),
             }
 
-        # Add root endpoint for basic info
         @app.get("/")
         async def root() -> Dict[str, Any]:
             return {
