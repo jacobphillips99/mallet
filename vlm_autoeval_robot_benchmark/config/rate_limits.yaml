@@ -6,6 +6,9 @@ openai:
   gpt-4o-mini:
     requests_per_minute: 5_000
     tokens_per_minute: 100_000_000
+  o4-mini:
+    requests_per_minute: 500
+    tokens_per_minute: 200_000
 
 anthropic:
   claude-3-7-sonnet:

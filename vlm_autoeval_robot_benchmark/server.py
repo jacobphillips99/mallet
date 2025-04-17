@@ -28,6 +28,7 @@ from datetime import datetime
 from typing import Any, Dict
 
 import draccus
+import json_numpy
 import numpy as np
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -49,6 +50,7 @@ from vlm_autoeval_robot_benchmark.utils.ecot_primitives.inverse_ecot_primitive_m
 )
 from vlm_autoeval_robot_benchmark.utils.robot_utils import GRIPPER_INDEX, get_gripper_position
 
+json_numpy.patch()
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -68,9 +70,11 @@ def image_server_helper(image: Any) -> str:
         buffered = io.BytesIO()
         pil_image.save(buffered, format="JPEG")
         image_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
-    else:
+    elif isinstance(image, str):
         # Assume it's already a base64 string
         image_b64 = image
+    else:
+        raise ValueError(f"Invalid image type: {type(image)}:\n\n{image}")
 
     return image_b64
 

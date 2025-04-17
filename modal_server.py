@@ -8,7 +8,17 @@ pip install modal
 Usage:
 modal deploy modal_server.py  # Deploy to Modal
 modal serve modal_server.py   # Run locally for development
+
+Environment Variables:
+MODEL: The VLM model to use (default: "gemini/gemini-2.5-pro-preview-03-25")
+CONCURRENCY: Number of containers to run (default: 1)
+TIMEOUT: Request timeout in seconds (default: 300)
+
+Example:
+MODEL="gpt-4o" modal deploy modal_server.py
 """
+
+import os
 
 import modal
 from fastapi import FastAPI
@@ -17,8 +27,13 @@ from vlm_autoeval_robot_benchmark.server import VLMPolicyServer
 
 # Define environment variables with defaults
 DEFAULT_MODEL = "gemini/gemini-2.5-pro-preview-03-25"
-DEFAULT_CONCURRENCY = 1
-DEFAULT_TIMEOUT = 300
+CONCURRENCY = 1
+TIMEOUT = 300
+
+# Read from environment variables or use defaults; this gets around Modal not accepting parameters during deployment
+# send it to the image instead
+MODEL = os.environ.get("MODEL", DEFAULT_MODEL)
+print(f"Found model: {MODEL}")
 
 # Define the Modal image
 image = (
@@ -34,7 +49,9 @@ image = (
         "pyyaml",
         "draccus",
         "asyncio",
+        "json_numpy",
     )
+    .env({"MODEL": MODEL})
     # Install the local package
     .add_local_python_source("vlm_autoeval_robot_benchmark")
     # Copy necessary files
@@ -48,8 +65,11 @@ image = (
     )
 )
 
+# Define app name based on model to have unique deployments for different models
+APP_NAME = f"vlm-robot-policy-{MODEL.replace('/', '-').replace('.', '-')}"
+
 app = modal.App(
-    name="vlm-robot-policy-server",
+    name=APP_NAME,
     image=image,
     secrets=[
         modal.Secret.from_name("openai-api-key"),
@@ -60,8 +80,8 @@ app = modal.App(
 
 
 @app.function(
-    max_containers=DEFAULT_CONCURRENCY,
-    timeout=DEFAULT_TIMEOUT,
+    max_containers=CONCURRENCY,
+    timeout=TIMEOUT,
 )
 @modal.asgi_app()
 def fastapi_app() -> FastAPI:
@@ -69,7 +89,7 @@ def fastapi_app() -> FastAPI:
     Modal ASGI app that serves the VLM policy server.
     This reuses the complete FastAPI app from VLMPolicyServer.
     """
-    # Initialize the VLM policy server
-    server = VLMPolicyServer(model=DEFAULT_MODEL)
+    # Initialize the VLM policy server with model from environment variable
+    server = VLMPolicyServer(model=os.environ.get("MODEL", DEFAULT_MODEL))
     # Create and return the FastAPI app with all routes
     return server._create_app()

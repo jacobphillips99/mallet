@@ -34,7 +34,12 @@ def get_provider_from_model(model: str) -> str:
         ValueError: If provider cannot be determined
     """
     # Fall back to heuristics
-    if model.startswith("gpt") or "openai" in model:
+    if (
+        model.startswith("gpt")
+        or "openai" in model
+        or model.startswith("o4")
+        or model.startswith("o3")
+    ):
         return "openai"
     if model.startswith("claude"):
         return "anthropic"
@@ -99,7 +104,7 @@ class VLMRequest(BaseModel):
     """Request to a VLM model."""
 
     vlm_input: VLMInput
-    max_tokens: int = 8192
+    max_tokens: int = 2**15  # (OAI reccomends 25k with reasoning models)
     temperature: float = 0.0
     top_p: float = 0.9
     model: str = "gpt-4o-mini"
@@ -333,15 +338,25 @@ class VLM:
         start_time = time.time()
         try:
             # Make the API call
-            response = await litellm.acompletion(
+            payload = dict(
                 model=request.model,
                 messages=messages,
                 temperature=request.temperature,
                 top_p=request.top_p,
-                max_tokens=request.max_tokens,
                 timeout=request.timeout,
                 stream=request.stream,
                 **request.extra_params,
+            )
+            # model specific params :(
+            if "o4" in request.model:
+                payload["max_completion_tokens"] = request.max_tokens
+                payload["temperature"] = 1.0
+                payload.pop("top_p")
+            else:
+                payload["max_tokens"] = request.max_tokens
+            response = await litellm.acompletion(**payload)
+            logger.info(
+                f"Cost: input tokens {response.usage.prompt_tokens}, output tokens {response.usage.completion_tokens}"
             )
 
             # Calculate response time
