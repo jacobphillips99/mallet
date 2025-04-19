@@ -1,1 +1,0 @@
-vlm_autoeval_robot_benchmark

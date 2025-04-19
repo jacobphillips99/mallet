@@ -188,28 +188,6 @@ class VLMPolicyServer:
                 ),
             )
 
-    def run(self, host: str = "0.0.0.0", port: int = 8000) -> None:
-        """
-        Run the server
-
-        Args:
-            host: Host address
-            port: Port number
-        """
-        self.app = self._create_app()
-
-        # Configure server with increased timeout and request size limits
-        config = uvicorn.Config(
-            self.app,
-            host=host,
-            port=port,
-            timeout_keep_alive=120,
-            limit_concurrency=None,  # Remove concurrency limit entirely
-        )
-        server = uvicorn.Server(config)
-
-        server.run()
-
     def _create_app(self) -> FastAPI:
         """
         Create and configure a FastAPI app with all routes.
@@ -264,6 +242,28 @@ class VLMPolicyServer:
                 logger.info("Started rate limit monitoring in FastAPI's event loop")
 
         return app
+
+    def run(self, host: str = "0.0.0.0", port: int = 8000) -> None:
+        """
+        Run the server
+
+        Args:
+            host: Host address
+            port: Port number
+        """
+        self.app = self._create_app()
+
+        # Configure server with increased timeout and request size limits
+        config = uvicorn.Config(
+            self.app,
+            host=host,
+            port=port,
+            timeout_keep_alive=120,
+            limit_concurrency=None,  # Remove concurrency limit entirely
+        )
+        server = uvicorn.Server(config)
+
+        server.run()
 
 
 @dataclass

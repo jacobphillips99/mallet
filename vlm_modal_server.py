@@ -23,7 +23,7 @@ import os
 import modal
 from fastapi import FastAPI
 
-from vlm_autoeval_robot_benchmark.server import VLMPolicyServer
+from vlm_autoeval_robot_benchmark.servers.vlm_policy_server import VLMPolicyServer
 
 # Define environment variables with defaults
 DEFAULT_MODEL = "gemini/gemini-2.5-pro-preview-03-25"
@@ -49,7 +49,7 @@ image = (
         "pyyaml",
         "draccus",
         "asyncio",
-        "json_numpy",
+        "json-numpy",
     )
     .env({"MODEL": MODEL})
     # Install the local package
@@ -82,7 +82,6 @@ app = modal.App(
 @app.function(
     max_containers=1,  # we want 1 container servering all reqs
     timeout=TIMEOUT,
-    concurrency_limit=CONCURRENCY,
 )
 @modal.asgi_app()
 def fastapi_app() -> FastAPI:
