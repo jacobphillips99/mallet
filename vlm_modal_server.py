@@ -23,7 +23,7 @@ import os
 import modal
 from fastapi import FastAPI
 
-from vlm_autoeval_robot_benchmark.servers.vlm_policy_server import VLMPolicyServer
+from vlm_autoeval_robot_benchmark.servers.server import VLMPolicyServer
 
 # Define environment variables with defaults
 DEFAULT_MODEL = "gemini/gemini-2.5-pro-preview-03-25"

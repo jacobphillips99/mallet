@@ -1,6 +1,8 @@
 """
 Adapted from https://github.com/zhouzypaul/auto_eval/blob/main/auto_eval/policy_server/openvla_server.py,
 which is adapted from https://github.com/openvla/openvla/blob/main/vla-scripts/deploy.py
+
+This runs on the remote Modal server which has OpenVLA installed via the image.
 """
 
 import json
