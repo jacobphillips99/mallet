@@ -9,6 +9,9 @@ openai:
   o4-mini:
     requests_per_minute: 500
     tokens_per_minute: 200_000
+  o3:
+    requests_per_minute: 10_000
+    tokens_per_minute: 2_000_000
 
 
 
