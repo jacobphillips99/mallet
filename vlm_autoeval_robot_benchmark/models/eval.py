@@ -46,7 +46,7 @@ async def run_episode(
                     env_desc=env_desc,
                     task_desc=task_desc,
                     gripper_position=gripper_descriptors[i],
-                    history_flag=True,
+                    history_flag=current_history is not None,
                 ),
                 history_dict=current_history,
             )

@@ -10,6 +10,8 @@ openai:
     requests_per_minute: 500
     tokens_per_minute: 200_000
 
+
+
 anthropic:
   claude-3-7-sonnet:
     requests_per_minute: 1_000
@@ -33,5 +35,9 @@ gemini:
     tokens_per_minute: 2_000_000 # technically input token limit
 
   gemini/gemini-2.5-pro-preview-03-25:
+    requests_per_minute: 150
+    tokens_per_minute: 2_000_000 # technically input token limit
+
+  gemini/gemini-2.5-flash-preview-04-17:
     requests_per_minute: 150
     tokens_per_minute: 2_000_000 # technically input token limit

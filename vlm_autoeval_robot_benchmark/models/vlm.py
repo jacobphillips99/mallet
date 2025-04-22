@@ -117,6 +117,19 @@ class VLMRequest(BaseModel):
     double_prompt: bool = True
 
 
+def model_specific_params(request: VLMRequest, payload: Dict[str, Any]) -> Dict[str, Any]:
+    # model specific params :(
+    if request.model in ["o4", "o3", "o4-mini", "o3-mini"]:
+        payload["max_completion_tokens"] = request.max_tokens
+        payload["temperature"] = 1.0
+        payload.pop("top_p")
+    else:
+        payload["max_tokens"] = request.max_tokens
+    if "gpt" in request.model:
+        payload["max_tokens"] = min(payload["max_tokens"], 16384)
+    return payload
+
+
 class VLM:
     """VLM class for handling async parallel requests using litellm."""
 
@@ -347,13 +360,7 @@ class VLM:
                 stream=request.stream,
                 **request.extra_params,
             )
-            # model specific params :(
-            if "o4" in request.model:
-                payload["max_completion_tokens"] = request.max_tokens
-                payload["temperature"] = 1.0
-                payload.pop("top_p")
-            else:
-                payload["max_tokens"] = request.max_tokens
+            payload = model_specific_params(request, payload)
             response = await litellm.acompletion(**payload)
             logger.info(
                 f"Cost: input tokens {response.usage.prompt_tokens}, output tokens {response.usage.completion_tokens}"
