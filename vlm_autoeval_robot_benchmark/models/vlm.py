@@ -72,6 +72,7 @@ class VLMInput(BaseModel):
 
     prompt: str
     images: Optional[List[ImageInput]] = None
+    image_key: str = "Image"
 
 
 class VLMHistory(BaseModel):
@@ -90,7 +91,7 @@ class VLMHistory(BaseModel):
                 images=[
                     ImageInput(
                         data=base64.b64encode(load_image(history_images_i_j)).decode("utf-8"),
-                        mime_type="image/png",
+                        mime_type="image/jpeg",
                     )
                     for history_images_i_j in history_images_i
                 ],
@@ -331,7 +332,10 @@ class VLM:
         # Prepare content for the user message
         vlm_input = request.vlm_input
         content = self._prepare_content(
-            vlm_input, history=request.history, double_prompt=request.double_prompt
+            vlm_input,
+            history=request.history,
+            double_prompt=request.double_prompt,
+            image_key=vlm_input.image_key,
         )
         user_message["content"] = content
         messages.append(user_message)
@@ -470,7 +474,7 @@ def create_modular_vlm_request(
     prompt_template: PromptTemplate,
     history_dict: t.Optional[dict[str, t.Union[str, list[tuple[str, list[bytes]]]]]] = None,
     history_placement: str = "before",
-    image_label: str = "Current Image",
+    image_key: str = "Current Image",
 ) -> VLMRequest:
     """Create a VLM request with more flexible modular configuration.
 
@@ -482,7 +486,7 @@ def create_modular_vlm_request(
         prompt_template: A configured PromptTemplate object
         history_dict: Optional history dictionary
         history_placement: Where to place history in relation to current content
-        image_label: Label to use for the current image
+        image_key: Label to use for the current image
 
     Returns:
         The constructed VLM request
@@ -507,12 +511,12 @@ def create_modular_vlm_request(
             images=[
                 ImageInput(
                     data=base64.b64encode(image_data).decode("utf-8"),
-                    mime_type="image/png",
-                    label=image_label,
+                    mime_type="image/jpeg",
                 )
             ],
         ),
         history=history,
+        image_key=image_key,
     )
 
 

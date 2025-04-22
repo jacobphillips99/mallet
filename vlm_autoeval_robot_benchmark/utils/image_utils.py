@@ -28,7 +28,7 @@ def numpy_array_to_png_bytes(arr: np.ndarray) -> bytes:
     buffer = io.BytesIO()
 
     # Save the image to the BytesIO object as PNG
-    img.save(buffer, format="PNG")
+    img.save(buffer, format="JPEG")
 
     # Get the bytes from the BytesIO object
     png_bytes = buffer.getvalue()
