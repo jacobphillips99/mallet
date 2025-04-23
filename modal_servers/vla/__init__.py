@@ -5,8 +5,14 @@ import modal
 HF_CACHE_VOL = modal.Volume.from_name("hf-cache", create_if_missing=True)
 HF_CACHE_PATH = "/cache"
 
+DEFAULT_APP_NAME = "openvla-7b-server"
+DEFAULT_OPENVLA_PATH = "openvla/openvla-7b"
+DEFAULT_CONCURRENCY = 1  # for testing
+DEFAULT_GPU = "A10G"
+DEFAULT_TIMEOUT = 30 * 60
 
-def get_openvla_server(openvla_path: str = "openvla/openvla-7b") -> Any:
+
+def get_openvla_server(openvla_path: str = DEFAULT_OPENVLA_PATH) -> Any:
     # import here to protect local dev environment from OpenVLA requirements
     from vlm_autoeval_robot_benchmark.servers.openvla_server import OpenVLAServer
 
@@ -48,4 +54,5 @@ image = (
         "git+https://github.com/openvla/openvla.git",
     )
     .add_local_python_source("vlm_autoeval_robot_benchmark")
+    .add_local_python_source("modal_servers")
 )
