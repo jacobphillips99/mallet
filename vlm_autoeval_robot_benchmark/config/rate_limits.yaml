@@ -44,3 +44,8 @@ gemini:
   gemini/gemini-2.5-flash-preview-04-17:
     requests_per_minute: 150
     tokens_per_minute: 2_000_000 # technically input token limit
+
+xai:
+  xai/grok-3-beta:
+    requests_per_minute: 600
+    tokens_per_minute: 1_000_000

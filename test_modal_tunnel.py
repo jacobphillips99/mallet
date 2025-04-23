@@ -1,11 +1,10 @@
 import modal
-from fastapi import FastAPI
 
-APP_NAME = "openvla-7b-server"
+APP_NAME = "openvla-7b-server-TUNNEL-TEST"
 MODEL_PATH = "openvla/openvla-7b"
-TIMEOUT = 30 * 60  # catchall-timeout of 30min
 CONCURRENCY = 1  # just for testing
 GPU = "A10G"
+TIMEOUT = 30 * 60  # catchall-timeout of 30min
 
 HF_CACHE_VOL = modal.Volume.from_name("hf-cache", create_if_missing=True)
 HF_CACHE_PATH = "/cache"
@@ -55,8 +54,7 @@ app = modal.App(
     max_containers=CONCURRENCY,
     scaledown_window=60,  # 1 minute scaledown window; more important for GPU servers since we want to avoid short drops since the spin-up cost is high
 )
-@modal.asgi_app()
-def serve() -> FastAPI:
+def serve() -> None:
     # import here to protect local dev environment from OpenVLA
     from vlm_autoeval_robot_benchmark.servers.openvla_server import OpenVLAServer
 
@@ -64,5 +62,7 @@ def serve() -> FastAPI:
         openvla_path=MODEL_PATH,
         attn_implementation="sdpa",  # would like to use flash_attention_2 but hitting nvcc issues
     )
-    fastapi_app = server._create_app()
-    return fastapi_app
+    with modal.forward(8000, unencrypted=True) as tunnel:
+        host, port = tunnel.tcp_socket
+        print(f"hit me at {host}:{port}")
+        server.run(host="0.0.0.0", port=8000)

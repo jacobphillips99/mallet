@@ -45,6 +45,8 @@ def get_provider_from_model(model: str) -> str:
         return "anthropic"
     if model.startswith("gemini"):
         return "gemini"
+    if model.startswith("xai") or "grok" in model:
+        return "xai"
     raise ValueError(f"Could not determine provider for model: {model}")
 
 
