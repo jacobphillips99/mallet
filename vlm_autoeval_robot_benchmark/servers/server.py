@@ -68,7 +68,7 @@ def image_server_helper(image: Any) -> str:
         # Convert numpy array to base64
         pil_image = Image.fromarray(image.astype(np.uint8))
         buffered = io.BytesIO()
-        pil_image.save(buffered, format="JPEG")
+        pil_image.save(buffered, format="PNG")
         image_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
     elif isinstance(image, str):
         # Assume it's already a base64 string
@@ -123,7 +123,7 @@ class VLMPolicyServer:
 
             # Prepare the VLM request
             image_b64 = image_server_helper(image)
-            vlm_image = ImageInput(data=image_b64, mime_type="image/jpeg")
+            vlm_image = ImageInput(data=image_b64, mime_type="image/png")
             gripper_position = (
                 None if proprio is None else get_gripper_position(proprio[GRIPPER_INDEX])
             )

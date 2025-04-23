@@ -16,7 +16,7 @@ openai:
 
 
 anthropic:
-  claude-3-7-sonnet:
+  claude-3-7-sonnet-20250219:
     requests_per_minute: 1_000
     tokens_per_minute: 40_000 # technically input token limit
 

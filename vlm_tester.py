@@ -26,6 +26,7 @@ class TestConfig:
     model: str = "gpt-4o-mini"
     task: str = "eggplant_in_blue_sink"
     parallel_requests: int = 1
+    include_history: bool = True
 
 
 async def test_vlm(cfg: TestConfig) -> None:
@@ -67,27 +68,28 @@ async def test_vlm(cfg: TestConfig) -> None:
         history_image_data = f.read()
 
     history_image_input = ImageInput(
-        data=base64.b64encode(history_image_data).decode("utf-8"), mime_type="image/jpeg"
+        data=base64.b64encode(history_image_data).decode("utf-8"), mime_type="image/png"
     )
-    history = VLMHistory(
-        prefix="This shows the history of a robotics episode.",
-        vlm_inputs=[
-            VLMInput(
-                prompt="This image shows the initial state of the scene.",
-                images=[history_image_input],
-            )
-        ],
-        suffix="Use this history to answer the question below.",
-        placement="before",
-    )
+    if cfg.include_history:
+        history = VLMHistory(
+            prefix="This shows the history of a robotics episode.",
+            vlm_inputs=[
+                VLMInput(
+                    prompt="This image shows the initial state of the scene.",
+                    images=[history_image_input],
+                )
+            ],
+            suffix="Use this history to answer the question below.",
+            placement="before",
+        )
+    else:
+        history = None
 
     vision_request = VLMRequest(
         vlm_input=VLMInput(
             prompt=f"The image below shows the end state of the scene. What actions would the robot have to take to reach this end state? The task instructions are: {task_instructions}",
             images=[
-                ImageInput(
-                    data=base64.b64encode(image_data).decode("utf-8"), mime_type="image/jpeg"
-                )
+                ImageInput(data=base64.b64encode(image_data).decode("utf-8"), mime_type="image/png")
             ],
         ),
         model=cfg.model,

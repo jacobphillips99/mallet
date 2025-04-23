@@ -64,7 +64,7 @@ class ImageInput(BaseModel):
     """Image input for VLM requests."""
 
     data: Union[str, bytes]  # Base64 encoded string or raw bytes
-    mime_type: str = "image/jpeg"
+    mime_type: str = "image/png"
 
 
 class VLMInput(BaseModel):
@@ -91,7 +91,7 @@ class VLMHistory(BaseModel):
                 images=[
                     ImageInput(
                         data=base64.b64encode(load_image(history_images_i_j)).decode("utf-8"),
-                        mime_type="image/jpeg",
+                        mime_type="image/png",
                     )
                     for history_images_i_j in history_images_i
                 ],
@@ -128,6 +128,8 @@ def model_specific_params(request: VLMRequest, payload: Dict[str, Any]) -> Dict[
         payload["max_tokens"] = request.max_tokens
     if "gpt" in request.model:
         payload["max_tokens"] = min(payload["max_tokens"], 16384)
+    elif "claude-3-5" in request.model:
+        payload["max_tokens"] = min(payload["max_tokens"], 8192)
     return payload
 
 
@@ -511,7 +513,7 @@ def create_modular_vlm_request(
             images=[
                 ImageInput(
                     data=base64.b64encode(image_data).decode("utf-8"),
-                    mime_type="image/jpeg",
+                    mime_type="image/png",
                 )
             ],
         ),
