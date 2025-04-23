@@ -6,16 +6,18 @@ import os
 
 import modal
 
-from modal_servers.vlm import get_vlm_modal_image, get_vlm_modal_secrets
+from modal_servers.vlm import (
+    DEFAULT_CONCURRENCY,
+    DEFAULT_MODEL,
+    DEFAULT_TIMEOUT,
+    get_vlm_modal_image,
+    get_vlm_modal_secrets,
+)
 from vlm_autoeval_robot_benchmark.servers.server import VLMPolicyServer
 
-# Define environment variables with defaults
-DEFAULT_MODEL = "gemini/gemini-2.5-pro-preview-03-25"
-CONCURRENCY = 20
-TIMEOUT = 30 * 60
-
-# Read from environment variables or use defaults; this gets around Modal not accepting parameters during deployment
-# send it to the image instead
+# Read from environment variables or use defaults
+# this gets around Modal not accepting parameters during deployment
+# send it to the image as environment variable instead
 MODEL = os.environ.get("MODEL", DEFAULT_MODEL)
 print(f"Found model: {MODEL}")
 
@@ -30,8 +32,8 @@ app = modal.App(
 
 
 @app.function(
-    max_containers=CONCURRENCY,  # this breaks the rate limits, but fine for now
-    timeout=TIMEOUT,
+    max_containers=DEFAULT_CONCURRENCY,  # this breaks the rate limits, but fine for now
+    timeout=DEFAULT_TIMEOUT,
 )
 def serve_vlm_tunnel() -> None:
     """

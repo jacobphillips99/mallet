@@ -2,8 +2,12 @@ from typing import List
 
 import modal
 
+DEFAULT_MODEL = "gemini/gemini-2.5-pro-preview-03-25"
+DEFAULT_CONCURRENCY = 20
+DEFAULT_TIMEOUT = 30 * 60
 
-def get_vlm_modal_image(model: str) -> modal.Image:
+
+def get_vlm_modal_image(model: str = DEFAULT_MODEL) -> modal.Image:
     return (
         modal.Image.debian_slim()
         .pip_install(
