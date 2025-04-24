@@ -1,5 +1,5 @@
 GRIPPER_INDEX = 6
-GRIPPER_OPEN_THRESHOLD = 0.95
+GRIPPER_OPEN_THRESHOLD = 0.8
 
 
 def get_gripper_position(gripper_state: float) -> str:

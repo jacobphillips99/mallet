@@ -83,6 +83,14 @@ For each direction:
 IMPORTANT: The gripper must always be set to either "open gripper" or "close gripper" (never null).
 """.strip()
 
+EXTRA_HINTS = """
+Play close attention to these extra hints!
+- Always consider the z-axis that describes the height of the robot's gripper, especially when grasping, lifting, placing, or avoiding obstacles.
+- Always keep the gripper open until the robot is ready to grasp an object.
+- Always consider the 3D orientation of objects in the scene, especially the robot's gripper.
+- Think about parallax and perspective -- is the gripper actually at the same location as the object, or does it just appear that way?
+""".strip()
+
 OUTPUT_EXAMPLE = """
 -------- BEGIN EXAMPLE --------
 **Scene Description:**
@@ -239,6 +247,9 @@ def build_standard_prompt(
     if prompt_template.gripper_position:
         builder.add_gripper_position(prompt_template.gripper_position)
     builder.add_content(ACTION_PLANNING_INSTRUCTIONS, name="action_planning_instructions")
+
+    # Add extra hints
+    builder.add_content(EXTRA_HINTS, name="extra_hints")
 
     # Add output format instructions
     builder.add_content(JSON_FORMAT_INSTRUCTIONS, name="output_format_instructions")

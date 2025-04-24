@@ -157,8 +157,9 @@ class VLMPolicyServer:
             response = await self.vlm.generate(vlm_request)
             try:
                 # Extract the JSON part of the response, convert to move vector
-                _, move_dict = parse_vlm_response(response.text)
+                description, move_dict = parse_vlm_response(response.text)
                 action = text_to_move_vector(move_dict).tolist()
+                logger.info(f"VLM description: {description}")
 
                 # Return the action as a JSON response, potentially including the VLM response
                 if payload.get("test", False):

@@ -131,8 +131,6 @@ class RateLimit:
         # Initialize semaphore for concurrent request limiting
         self._semaphores[provider][model] = asyncio.Semaphore(config.concurrent_requests)
 
-        logger.info(f"Registered model {provider}/{model} with config: {config}")
-
         # Start monitoring if enabled and not already started
         self._ensure_monitor_started()
 

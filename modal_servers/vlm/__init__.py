@@ -44,4 +44,5 @@ def get_vlm_modal_secrets() -> List[modal.Secret]:
         modal.Secret.from_name("openai-api-key"),
         modal.Secret.from_name("anthropic-api-key"),
         modal.Secret.from_name("gemini-api-key"),
+        modal.Secret.from_name("xai-api-key"),
     ]
