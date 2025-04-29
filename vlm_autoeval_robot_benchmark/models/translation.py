@@ -30,7 +30,7 @@ Focus only on the immediate next step, not the entire task sequence.
 """.strip()
 
 HISTORY_INSTRUCTIONS = """
-You have also been provided with historical image(s) and actions. Consider these when determining the next action.
+You will also be provided with historical image(s) and actions. Consider these when determining the next action.
 Compare the historical image(s) with the current image to identify changes in:
 - Robot position and orientation
 - Environmental changes
@@ -59,13 +59,14 @@ Explain your reasoning for the next action, considering:
 
 # Output format components
 JSON_FORMAT_INSTRUCTIONS = """
-First, describe the scene according to the image and history and action, following the instructions in the Scene Description section.
+First, describe the scene according to the image, following the instructions in the Scene Description section.
+{historical_format_instructions}
 Make sure to focus on the relationship between the robot's gripper and the task objects.
 Next, explain your reasoning for the next action, following the instructions in the Action Planning section.
 
 Finally, output your answer as a Python JSON dictionary, beginning with ```json and ending with ```.
 Include 7 elements, each representing a degree of freedom:
-{
+{{
     "x": ["forward", "backward", null],
     "y": ["left", "right", null],
     "z": ["up", "down", null],
@@ -73,7 +74,7 @@ Include 7 elements, each representing a degree of freedom:
     "roll": ["roll up", "roll down", null],
     "rotation": ["rotate clockwise", "rotate counterclockwise", null],
     "gripper": ["open gripper", "close gripper"]
-}
+}}
 
 For each direction:
 1. Select the appropriate direction from the options listed (or null if no movement)
@@ -100,10 +101,10 @@ OUTPUT_EXAMPLE = """
 
 **Action Planning:**
 (explanation of the reasoning for the next action here)
-
+{historical_output_example}
 **Output:**
 ```json
-{
+{{
     "x": ["forward", 0.8, "Need to reach the drawer handle which is in front of the robot"],
     "y": ["left", 0.1, "Need to align slightly left to center on the drawer handle"],
     "z": [null, 0.0, "No vertical adjustment needed as gripper is already at handle height"],
@@ -111,7 +112,7 @@ OUTPUT_EXAMPLE = """
     "roll": [null, 0.0, "No roll adjustment needed for this grasping position"],
     "rotation": [null, 0.0, "Current rotation is aligned with the drawer handle"],
     "gripper": ["close gripper", 1.0, "Need to firmly grasp the drawer handle before pulling"]
-}
+}}
 ```
 -------- END EXAMPLE --------
 
@@ -119,7 +120,7 @@ Note: The output should NOT contain all null actions unless the robot has comple
 """.strip()
 
 HISTORY_PREFIX = "You are being shown the history of a robotics episode."
-HISTORY_SUFFIX = "Consider the above history when determining the next action."
+HISTORY_SUFFIX = "Consider the above history when determining the next action.\n"
 
 
 class PromptTemplate(BaseModel):
@@ -239,10 +240,6 @@ def build_standard_prompt(
     builder.add_content(prompt_template.env_desc, name="environment_description")
     builder.add_content(prompt_template.task_desc, name="task_description")
 
-    # Conditionally add history instructions
-    if prompt_template.history_flag:
-        builder.add_content(HISTORY_INSTRUCTIONS, name="history_instructions")
-
     # Add scene and action instructions
     builder.add_content(SCENE_DESCRIPTION_INSTRUCTIONS, name="scene_description_instructions")
 
@@ -253,7 +250,29 @@ def build_standard_prompt(
     # Add extra hints
     builder.add_content(EXTRA_HINTS, name="extra_hints")
 
+    # Conditionally add history instructions
+    if prompt_template.history_flag:
+        builder.add_content(HISTORY_INSTRUCTIONS, name="history_instructions")
+
     # Add output format instructions
-    builder.add_content(JSON_FORMAT_INSTRUCTIONS, name="output_format_instructions")
-    builder.add_content(OUTPUT_EXAMPLE, name="output_example")
+    historical_format_instructions = (
+        ""
+        if not prompt_template.history_flag
+        else "Next, describe the progress between the historical image and the current image as according to the History Instructions section."
+    )
+    builder.add_content(
+        JSON_FORMAT_INSTRUCTIONS.format(
+            historical_format_instructions=historical_format_instructions
+        ),
+        name="output_format_instructions",
+    )
+    historical_output_example = (
+        ""
+        if not prompt_template.history_flag
+        else "**Historical Change**\n(explanation of the historical change here)"
+    )
+    builder.add_content(
+        OUTPUT_EXAMPLE.format(historical_output_example=historical_output_example),
+        name="output_example",
+    )
     return builder.build()

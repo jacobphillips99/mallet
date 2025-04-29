@@ -27,7 +27,7 @@ import traceback
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import draccus
 import json_numpy
@@ -188,9 +188,8 @@ class VLMPolicyServer:
         # clean the description
         description_str = description.split("**Output:**")[0]
         move_dict_str = json.dumps(move_dict, indent=2)
-        caption = f"""Here is your description from the last step:\n{description_str}\n
-        Here is the move dict you decided on from the last step:\n{move_dict_str}
-        """
+        caption = f"""Here is your description from the last step:\n{description_str}\nHere is the move dict you decided on from the last step:\n{move_dict_str}
+        """.strip()
         history_vlm_input = VLMInput(prompt=caption, images=vlm_request.vlm_input.images)
         assert self.history is not None, "history must be set"
         self.history.append(history_vlm_input)
