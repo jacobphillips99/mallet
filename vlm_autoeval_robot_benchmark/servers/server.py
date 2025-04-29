@@ -22,7 +22,6 @@ import base64
 import io
 import json
 import logging
-import os
 import traceback
 from collections import deque
 from dataclasses import dataclass
@@ -68,13 +67,6 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-os.environ["LITELLM_LOG"] = "ERROR"
-
-
-# ruff: noqa: E402
-import litellm
-
-litellm.suppress_debug_info = True
 
 
 def image_server_helper(image: Any) -> str:
@@ -210,7 +202,9 @@ class VLMPolicyServer:
                     status_code=400,
                     detail="Missing required fields: image and instruction",
                 )
-
+            logger.info(
+                f"\n\nNEW REQUEST: history of len {len(self.history) if self.history is not None else 'None'}"
+            )
             image = payload["image"]
             instruction = payload["instruction"]
             raw_proprio = payload.get("proprio", None)  # proprio is optional
@@ -308,6 +302,15 @@ class VLMPolicyServer:
 
         # Add the main action endpoint
         app.post("/act")(self.predict_action)
+
+        # Add a reset endpoint
+        @app.post("/reset")
+        async def reset() -> dict[str, Any]:
+            logger.info("Resetting history")
+            self.history = (
+                None if self.history_length is None else deque(maxlen=self.history_length)
+            )
+            return {"status": "reset successful"}
 
         # Add a startup event to ensure rate limiter monitoring is integrated with FastAPI's event loop
         @app.on_event("startup")

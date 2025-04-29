@@ -19,14 +19,17 @@ from vlm_autoeval_robot_benchmark.servers.server import VLMPolicyServer
 # this gets around Modal not accepting parameters during deployment
 # send it to the image as environment variable instead
 MODEL = os.environ.get("MODEL", DEFAULT_MODEL)
+HISTORY_LENGTH = os.environ.get("HISTORY_LENGTH", None)
 print(f"Found model: {MODEL}")
-
+print(f"Found history length: {HISTORY_LENGTH}")
 # Define app name based on model to have unique deployments for different models
-APP_NAME = f"vlm-robot-policy-{MODEL.replace('/', '-').replace('.', '-')}-tunnel"
+APP_NAME = f"vlm-robot-policy-{MODEL.replace('/', '-').replace('.', '-')}-tunnel" + (
+    f"-history-{HISTORY_LENGTH}" if HISTORY_LENGTH is not None else ""
+)
 
 app = modal.App(
     name=APP_NAME,
-    image=get_vlm_modal_image(model=MODEL),
+    image=get_vlm_modal_image(MODEL=MODEL, HISTORY_LENGTH=HISTORY_LENGTH, LITELLM_LOG="CRITICAL"),
     secrets=get_vlm_modal_secrets(),
 )
 
@@ -41,7 +44,12 @@ def serve_vlm_tunnel() -> None:
     This reuses the complete FastAPI app from VLMPolicyServer.
     """
     # Initialize the VLM policy server with model from environment variable
-    server = VLMPolicyServer(model=os.environ.get("MODEL", DEFAULT_MODEL))
+    model = os.environ.get("MODEL", DEFAULT_MODEL)
+    history_length = os.environ.get("HISTORY_LENGTH", None)
+    server = VLMPolicyServer(
+        model=model,
+        history_length=int(history_length) if history_length is not None else None,
+    )
     # Serve the server on a tunnel to expose port; find tcp socket in logs
     with modal.forward(8000, unencrypted=True) as tunnel:
         host, port = tunnel.tcp_socket

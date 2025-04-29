@@ -1,13 +1,13 @@
-from typing import List
+from typing import Any, List
 
 import modal
 
 DEFAULT_MODEL = "gemini/gemini-2.5-pro-preview-03-25"
 DEFAULT_CONCURRENCY = 20
-DEFAULT_TIMEOUT = 30 * 60
+DEFAULT_TIMEOUT = 30 * 60 * 4
 
 
-def get_vlm_modal_image(model: str = DEFAULT_MODEL) -> modal.Image:
+def get_vlm_modal_image(**env_kwargs: Any) -> modal.Image:
     return (
         modal.Image.debian_slim()
         .pip_install(
@@ -23,7 +23,7 @@ def get_vlm_modal_image(model: str = DEFAULT_MODEL) -> modal.Image:
             "asyncio",
             "json-numpy",
         )
-        .env({"MODEL": model})
+        .env(env_kwargs)
         # Install the local package
         .add_local_python_source("vlm_autoeval_robot_benchmark")
         .add_local_python_source("modal_servers")

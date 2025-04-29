@@ -27,7 +27,7 @@ APP_NAME = f"vlm-robot-policy-{MODEL.replace('/', '-').replace('.', '-')}"
 
 app = modal.App(
     name=APP_NAME,
-    image=get_vlm_modal_image(model=MODEL),
+    image=get_vlm_modal_image(model=MODEL, LITELLM_LOG="CRITICAL"),
     secrets=get_vlm_modal_secrets(),
 )
 
