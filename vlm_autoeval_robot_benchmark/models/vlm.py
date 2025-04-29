@@ -279,6 +279,29 @@ class VLM:
 
         return content
 
+    def _prepare_messages(self, request: VLMRequest) -> List[Dict[str, Any]]:
+        # Prepare messages
+        messages = []
+
+        # Add system prompt if provided
+        if request.system_prompt:
+            messages.append({"role": "system", "content": request.system_prompt})
+
+        # Prepare user message with images if any
+        user_message: Dict[str, Any] = {"role": "user"}
+
+        # Prepare content for the user message
+        vlm_input = request.vlm_input
+        content = self._prepare_content(
+            vlm_input,
+            history=request.history,
+            double_prompt=request.double_prompt,
+            image_key=vlm_input.image_key,
+        )
+        user_message["content"] = content
+        messages.append(user_message)
+        return messages
+
     def _estimate_prompt_tokens(self, prompt: str, n_images: int, model: str) -> int:
         """Roughly estimate the number of tokens in a prompt.
 
@@ -323,26 +346,7 @@ class VLM:
         """
         # Determine provider if not specified
         provider = request.provider or get_provider_from_model(request.model)
-        # Prepare messages
-        messages = []
-
-        # Add system prompt if provided
-        if request.system_prompt:
-            messages.append({"role": "system", "content": request.system_prompt})
-
-        # Prepare user message with images if any
-        user_message: Dict[str, Any] = {"role": "user"}
-
-        # Prepare content for the user message
-        vlm_input = request.vlm_input
-        content = self._prepare_content(
-            vlm_input,
-            history=request.history,
-            double_prompt=request.double_prompt,
-            image_key=vlm_input.image_key,
-        )
-        user_message["content"] = content
-        messages.append(user_message)
+        messages = self._prepare_messages(request)
 
         # Calculate estimated tokens
         estimated_tokens = self._estimate_prompt_tokens(

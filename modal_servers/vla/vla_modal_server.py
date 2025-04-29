@@ -2,19 +2,22 @@ import modal
 from fastapi import FastAPI
 
 from modal_servers.vla import (
-    DEFAULT_APP_NAME,
     DEFAULT_CONCURRENCY,
+    DEFAULT_ECOT_PATH,
     DEFAULT_GPU,
     DEFAULT_OPENVLA_PATH,
     DEFAULT_TIMEOUT,
     HF_CACHE_PATH,
     HF_CACHE_VOL,
+    get_ecot_server,
     get_openvla_server,
     image,
 )
 
+# APP_NAME = DEFAULT_OPENVLA_PATH.split("/")[-1].replace("-", "_").replace(".", "_")
+APP_NAME = DEFAULT_ECOT_PATH.split("/")[-1].replace("-", "_").replace(".", "_")
 app = modal.App(
-    name=DEFAULT_APP_NAME,
+    name=APP_NAME,
     image=image,
 )
 
@@ -29,5 +32,6 @@ app = modal.App(
 @modal.asgi_app()
 def serve_vla() -> FastAPI:
     # lazy import OpenVLAServer to protect local dev environment from OpenVLA requirements
-    server = get_openvla_server(openvla_path=DEFAULT_OPENVLA_PATH)
+    # server = get_openvla_server(openvla_path=DEFAULT_OPENVLA_PATH)
+    server = get_ecot_server(ecot_path=DEFAULT_ECOT_PATH)
     return server._create_app()

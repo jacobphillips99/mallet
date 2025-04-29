@@ -89,6 +89,8 @@ Play close attention to these extra hints!
 - Always keep the gripper open until the robot is ready to grasp an object.
 - Always consider the 3D orientation of objects in the scene, especially the robot's gripper.
 - Think about parallax and perspective -- is the gripper actually at the same location as the object, or does it just appear that way?
+- Always double check if the gripper is ACTUALLY grasping an object. If so, the bounding box of the gripper should be very similar to the bounding box of the object.
+- It's okay for the gripper to open or close while moving the rest of the robot. Don't delay moving the end-effector in xyz space just to open or close the gripper, unless you're actually grasping an object.
 """.strip()
 
 OUTPUT_EXAMPLE = """

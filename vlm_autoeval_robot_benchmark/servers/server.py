@@ -22,10 +22,12 @@ import base64
 import io
 import json
 import logging
+import os
 import traceback
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 import draccus
 import json_numpy
@@ -37,10 +39,16 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 
 from vlm_autoeval_robot_benchmark.models.rate_limit import rate_limiter
-from vlm_autoeval_robot_benchmark.models.translation import PromptTemplate, build_standard_prompt
+from vlm_autoeval_robot_benchmark.models.translation import (
+    HISTORY_PREFIX,
+    HISTORY_SUFFIX,
+    PromptTemplate,
+    build_standard_prompt,
+)
 from vlm_autoeval_robot_benchmark.models.vlm import (
     VLM,
     ImageInput,
+    VLMHistory,
     VLMInput,
     VLMRequest,
     parse_vlm_response,
@@ -48,7 +56,11 @@ from vlm_autoeval_robot_benchmark.models.vlm import (
 from vlm_autoeval_robot_benchmark.utils.ecot_primitives.inverse_ecot_primitive_movements import (
     text_to_move_vector,
 )
-from vlm_autoeval_robot_benchmark.utils.robot_utils import GRIPPER_INDEX, get_gripper_position
+from vlm_autoeval_robot_benchmark.utils.robot_utils import (
+    GRIPPER_INDEX,
+    GRIPPER_OPEN_THRESHOLD,
+    get_gripper_position,
+)
 
 json_numpy.patch()
 # Configure logging
@@ -56,6 +68,12 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+os.environ["LITELLM_LOG"] = "ERROR"
+
+
+import litellm
+
+litellm.suppress_debug_info = True
 
 
 def image_server_helper(image: Any) -> str:
@@ -87,7 +105,7 @@ class VLMPolicyServer:
         => Returns  {"action": np.ndarray}
     """
 
-    def __init__(self, model: str = "gpt-4o-mini") -> None:
+    def __init__(self, model: str = "gpt-4o-mini", history_length: Optional[int] = None) -> None:
         """
         Initialize the VLM-based policy server
 
@@ -97,7 +115,73 @@ class VLMPolicyServer:
         # Initialize VLM instance
         self.vlm = VLM()
         self.model = model
-        logger.info(f"VLM Policy Server initialized with model: {self.model}")
+        self.history_length = history_length
+        logger.info(
+            f"VLM Policy Server initialized with model: {self.model}{f' and history_length: {self.history_length}' if self.history_length is not None else ''}"
+        )
+        self.history: Optional[deque[VLMInput]] = None
+        if self.history_length is not None:
+            self.history = deque(maxlen=self.history_length)
+
+    def prep_request(
+        self,
+        image: Any,
+        instruction: str,
+        raw_proprio: Optional[np.ndarray],
+    ) -> VLMRequest:
+        # Prepare the VLM request
+        vlm_image = ImageInput(data=image_server_helper(image), mime_type="image/png")
+        logger.info(
+            f"proprio (len {len(raw_proprio)}): {raw_proprio}"
+            if raw_proprio is not None
+            else "proprio is None"
+        )
+        gripper_position = (
+            None if raw_proprio is None else get_gripper_position(raw_proprio[GRIPPER_INDEX])
+        )
+        logger.info(
+            f"gripper_position: {gripper_position} w/ threshold {GRIPPER_OPEN_THRESHOLD} and value {raw_proprio[GRIPPER_INDEX]}"
+            if raw_proprio is not None
+            else "gripper_position is None"
+        )
+
+        # Create a prompt for the VLM
+        prompt = build_standard_prompt(
+            prompt_template=PromptTemplate(
+                env_desc="You are looking at a robotics environment.",
+                task_desc=instruction,
+                gripper_position=gripper_position,
+                history_flag=self.history_length is not None,
+            )
+        )
+
+        # Create history context if available
+        vlm_history = None
+        if self.history_length is not None and len(self.history) > 0:
+            vlm_history = VLMHistory(
+                prefix=HISTORY_PREFIX,
+                vlm_inputs=list(self.history),
+                suffix=HISTORY_SUFFIX,
+            )
+
+        # Create and send the VLM request
+        vlm_request = VLMRequest(
+            vlm_input=VLMInput(
+                prompt=prompt,
+                images=[vlm_image],
+            ),
+            model=self.model,
+            history=vlm_history,
+        )
+        return vlm_request
+
+    def add_to_history(self, vlm_request: VLMRequest, description: str, move_dict: Dict[str, Any]):
+        caption = f"""
+        Here is your description from the last step: {description}\n
+        Here is the move dict you decided on from the last step: {move_dict}\n
+        """
+        history_vlm_input = VLMInput(prompt=caption, images=vlm_request.vlm_input.images)
+        self.history.append(history_vlm_input)
 
     async def predict_action(self, payload: Dict[str, Any]) -> JSONResponse:
         """
@@ -118,45 +202,17 @@ class VLMPolicyServer:
 
             image = payload["image"]
             instruction = payload["instruction"]
-            proprio = payload.get("proprio", None)  # proprio is optional
-            history = payload.get("history", None)  # history is optional
+            raw_proprio = payload.get("proprio", None)  # proprio is optional
+
+            vlm_request = self.prep_request(
+                image=image,
+                instruction=instruction,
+                raw_proprio=raw_proprio,
+            )
 
             if instruction == "test connection":
                 # short-circuit the VLM call for testing purposes; should help with latency on test_policy_server
                 return JSONResponse(content=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-
-            # Prepare the VLM request
-            image_b64 = image_server_helper(image)
-            vlm_image = ImageInput(data=image_b64, mime_type="image/png")
-            gripper_position = (
-                None if proprio is None else get_gripper_position(proprio[GRIPPER_INDEX])
-            )
-
-            # Create a prompt for the VLM
-            prompt = build_standard_prompt(
-                prompt_template=PromptTemplate(
-                    env_desc="You are looking at a robotics environment.",
-                    task_desc=instruction,
-                    gripper_position=gripper_position,
-                    history_flag=history is not None,
-                )
-            )
-
-            # Create history context if available
-            # vlm_history = None
-            # if history:
-            #     # Simplified history handling - would need to be expanded for real use
-            #     pass
-
-            # Create and send the VLM request
-            vlm_request = VLMRequest(
-                vlm_input=VLMInput(
-                    prompt=prompt,
-                    images=[vlm_image],
-                ),
-                model=self.model,
-                history=None,
-            )
 
             response = await self.vlm.generate(vlm_request)
             try:
@@ -164,6 +220,12 @@ class VLMPolicyServer:
                 description, move_dict = parse_vlm_response(response.text)
                 action = text_to_move_vector(move_dict).tolist()
                 logger.info(f"VLM description: {description}")
+                logger.info(f"VLM move dict: {move_dict}")
+                logger.info(f"VLM action: {action}")
+
+                # optionally add img, description, and move_dict to history
+                if self.history_length is not None:
+                    self.add_to_history(vlm_request, description, move_dict)
 
                 # Return the action as a JSON response, potentially including the VLM response
                 if payload.get("test", False):
@@ -277,6 +339,7 @@ class DeployConfig:
     host: str = "0.0.0.0"  # Host IP Address
     port: int = 8000  # Host Port
     model: str = "gemini/gemini-2.5-pro-preview-03-25"  # VLM model to use
+    history_length: Optional[int] = None  # Optional history length
 
 
 @draccus.wrap()
@@ -287,7 +350,7 @@ def deploy(cfg: DeployConfig) -> None:
     Args:
         cfg: Deployment configuration
     """
-    server = VLMPolicyServer(model=cfg.model)
+    server = VLMPolicyServer(model=cfg.model, history_length=cfg.history_length)
     server.run(cfg.host, port=cfg.port)
 
 

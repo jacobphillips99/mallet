@@ -5,11 +5,12 @@ import modal
 HF_CACHE_VOL = modal.Volume.from_name("hf-cache", create_if_missing=True)
 HF_CACHE_PATH = "/cache"
 
-DEFAULT_APP_NAME = "openvla-7b-server"
 DEFAULT_OPENVLA_PATH = "openvla/openvla-7b"
 DEFAULT_CONCURRENCY = 1  # for testing
 DEFAULT_GPU = "A10G"
 DEFAULT_TIMEOUT = 30 * 60
+
+DEFAULT_ECOT_PATH = "Embodied-CoT/ecot-openvla-7b-bridge"
 
 
 def get_openvla_server(openvla_path: str = DEFAULT_OPENVLA_PATH) -> Any:
@@ -24,9 +25,16 @@ def get_openvla_server(openvla_path: str = DEFAULT_OPENVLA_PATH) -> Any:
     return server
 
 
+def get_ecot_server(ecot_path: str = DEFAULT_ECOT_PATH) -> Any:
+    from vlm_autoeval_robot_benchmark.servers.ecot_server import ECOTServer
+
+    server = ECOTServer(ecot_path=ecot_path)
+    return server
+
+
 image = (
     modal.Image.debian_slim()
-    .apt_install("git")
+    .apt_install("git", "python3-opencv")
     .env(
         {
             "HF_HOME": HF_CACHE_PATH,
@@ -51,6 +59,7 @@ image = (
         "aiohttp",
         "pyyaml",
         "asyncio",
+        "opencv-python",
         "git+https://github.com/openvla/openvla.git",
     )
     .add_local_python_source("vlm_autoeval_robot_benchmark")
