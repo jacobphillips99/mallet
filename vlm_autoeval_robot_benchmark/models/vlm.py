@@ -117,7 +117,7 @@ class VLMRequest(BaseModel):
     timeout: float = 120.0
     extra_params: Dict[str, Any] = Field(default_factory=dict)
     history: Optional[VLMHistory] = None  # List of previous inputs in the conversation
-    double_prompt: bool = True
+    double_prompt: bool = False
 
 
 def model_specific_params(request: VLMRequest, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -223,9 +223,13 @@ class VLM:
 
         if vlm_input.images:
             # interleave text breaks with images
+            image_key_modifier = "Current " if history is not None else ""
             formatted_images = self._prepare_images(vlm_input.images)
             present_content = [
-                [{"type": "text", "text": f"{image_key} {i+1}:"}, formatted_img_msg]
+                [
+                    {"type": "text", "text": f"{image_key_modifier}{image_key} {i+1}:"},
+                    formatted_img_msg,
+                ]
                 for i, formatted_img_msg in enumerate(formatted_images)
             ]
             image_content = sum(present_content, [])
@@ -298,6 +302,8 @@ class VLM:
             double_prompt=request.double_prompt,
             image_key=vlm_input.image_key,
         )
+        # add a final line instructing the model to begin its response below
+        content.append({"type": "text", "text": "Begin your response below."})
         user_message["content"] = content
         messages.append(user_message)
         return messages

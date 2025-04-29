@@ -119,7 +119,7 @@ Note: The output should NOT contain all null actions unless the robot has comple
 """.strip()
 
 HISTORY_PREFIX = "You are being shown the history of a robotics episode."
-HISTORY_SUFFIX = "Consider the history when determining the next action."
+HISTORY_SUFFIX = "Consider the above history when determining the next action."
 
 
 class PromptTemplate(BaseModel):
@@ -215,7 +215,7 @@ class PromptBuilder:
             The complete prompt string
         """
         return "\n\n".join(
-            f"# {segment.name.title() if segment.name is not None else ''}\n{segment.content}"
+            f"# {segment.name.replace('_', ' ').title() if segment.name is not None else ''}\n{segment.content}"
             for segment in self.segments
         )
 

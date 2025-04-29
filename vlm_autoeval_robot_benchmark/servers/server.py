@@ -27,7 +27,7 @@ import traceback
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import draccus
 import json_numpy
@@ -71,6 +71,7 @@ logger = logging.getLogger(__name__)
 os.environ["LITELLM_LOG"] = "ERROR"
 
 
+# ruff: noqa: E402
 import litellm
 
 litellm.suppress_debug_info = True
@@ -102,7 +103,7 @@ class VLMPolicyServer:
     """
     A server for VLM-based robot policy; exposes `/act` to predict an action for a given image + instruction.
         => Takes in {"image": np.ndarray, "instruction": str, "proprio": Optional[np.ndarray]}
-        => Returns  {"action": np.ndarray}
+        => Returns  np.ndarray or list[float] of 7-dim action
     """
 
     def __init__(self, model: str = "gpt-4o-mini", history_length: Optional[int] = None) -> None:
@@ -145,19 +146,25 @@ class VLMPolicyServer:
             else "gripper_position is None"
         )
 
+        history_flag = (
+            self.history_length is not None and self.history is not None and len(self.history) > 0
+        )
         # Create a prompt for the VLM
         prompt = build_standard_prompt(
             prompt_template=PromptTemplate(
                 env_desc="You are looking at a robotics environment.",
                 task_desc=instruction,
                 gripper_position=gripper_position,
-                history_flag=self.history_length is not None,
+                history_flag=history_flag,
             )
         )
 
         # Create history context if available
         vlm_history = None
-        if self.history_length is not None and len(self.history) > 0:
+        if history_flag:
+            assert (
+                self.history_length is not None and self.history is not None
+            ), "history_length must be set if history_flag is True"
             vlm_history = VLMHistory(
                 prefix=HISTORY_PREFIX,
                 vlm_inputs=list(self.history),
@@ -175,15 +182,20 @@ class VLMPolicyServer:
         )
         return vlm_request
 
-    def add_to_history(self, vlm_request: VLMRequest, description: str, move_dict: Dict[str, Any]):
-        caption = f"""
-        Here is your description from the last step: {description}\n
-        Here is the move dict you decided on from the last step: {move_dict}\n
+    def add_to_history(
+        self, vlm_request: VLMRequest, description: str, move_dict: dict[str, Any]
+    ) -> None:
+        # clean the description
+        description_str = description.split("**Output:**")[0]
+        move_dict_str = json.dumps(move_dict, indent=2)
+        caption = f"""Here is your description from the last step:\n{description_str}\n
+        Here is the move dict you decided on from the last step:\n{move_dict_str}
         """
         history_vlm_input = VLMInput(prompt=caption, images=vlm_request.vlm_input.images)
+        assert self.history is not None, "history must be set"
         self.history.append(history_vlm_input)
 
-    async def predict_action(self, payload: Dict[str, Any]) -> JSONResponse:
+    async def predict_action(self, payload: dict[str, Any]) -> JSONResponse:
         """
         Predict a 7-dim action given an image + proprio + instruction
         """
@@ -279,7 +291,7 @@ class VLMPolicyServer:
 
         # Add health check endpoint
         @app.get("/health")
-        async def health_check() -> Dict[str, Any]:
+        async def health_check() -> dict[str, Any]:
             return {
                 "status": "healthy",
                 "model": self.model,
@@ -287,7 +299,7 @@ class VLMPolicyServer:
             }
 
         @app.get("/")
-        async def root() -> Dict[str, Any]:
+        async def root() -> dict[str, Any]:
             return {
                 "name": "VLM AutoEval Robot Policy",
                 "model": self.model,
