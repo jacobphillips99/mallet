@@ -20,16 +20,23 @@ from vlm_autoeval_robot_benchmark.servers.server import VLMPolicyServer
 # send it to the image as environment variable instead
 MODEL = os.environ.get("MODEL", DEFAULT_MODEL)
 HISTORY_LENGTH = os.environ.get("HISTORY_LENGTH", None)
-print(f"Found model: {MODEL}")
-print(f"Found history length: {HISTORY_LENGTH}")
+HISTORY_CHOICE = os.environ.get("HISTORY_CHOICE", None)
+print(f"Found model: {MODEL}, history length: {HISTORY_LENGTH}, history choice: {HISTORY_CHOICE}")
 # Define app name based on model to have unique deployments for different models
-APP_NAME = f"vlm-robot-policy-{MODEL.replace('/', '-').replace('.', '-')}-tunnel" + (
-    f"-history-{HISTORY_LENGTH}" if HISTORY_LENGTH is not None else ""
+APP_NAME = (
+    f"vlm-robot-policy-{MODEL.replace('/', '-').replace('.', '-')}-tunnel"
+    + (f"-history-{HISTORY_LENGTH}" if HISTORY_LENGTH is not None else "")
+    + (f"-history-choice-{HISTORY_CHOICE}" if HISTORY_CHOICE is not None else "")
 )
 
 app = modal.App(
     name=APP_NAME,
-    image=get_vlm_modal_image(MODEL=MODEL, HISTORY_LENGTH=HISTORY_LENGTH, LITELLM_LOG="CRITICAL"),
+    image=get_vlm_modal_image(
+        MODEL=MODEL,
+        HISTORY_LENGTH=HISTORY_LENGTH,
+        HISTORY_CHOICE=HISTORY_CHOICE,
+        LITELLM_LOG="CRITICAL",
+    ),
     secrets=get_vlm_modal_secrets(),
 )
 

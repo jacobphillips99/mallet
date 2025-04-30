@@ -98,7 +98,12 @@ class VLMPolicyServer:
         => Returns  np.ndarray or list[float] of 7-dim action
     """
 
-    def __init__(self, model: str = "gpt-4o-mini", history_length: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        model: str = "gpt-4o-mini",
+        history_length: Optional[int] = None,
+        history_choice: Optional[Any] = None,
+    ) -> None:
         """
         Initialize the VLM-based policy server
 
@@ -109,6 +114,16 @@ class VLMPolicyServer:
         self.vlm = VLM()
         self.model = model
         self.history_length = history_length
+        self.history_choice = history_choice
+        if self.history_length is not None and self.history_choice is not None:
+            if isinstance(self.history_choice, int):
+                assert (
+                    abs(self.history_choice) <= self.history_length
+                ), f"history_choice {self.history_choice} must be less than or equal to history_length {self.history_length}"
+            elif isinstance(self.history_choice, str):
+                assert self.history_choice in [
+                    "all"  # todo more options
+                ], f"history_choice {self.history_choice} must be in ['all']"
         logger.info(
             f"VLM Policy Server initialized with model: {self.model}{f' and history_length: {self.history_length}' if self.history_length is not None else ''}"
         )
@@ -157,9 +172,20 @@ class VLMPolicyServer:
             assert (
                 self.history_length is not None and self.history is not None
             ), "history_length must be set if history_flag is True"
+            if isinstance(self.history_choice, int):
+                history_inputs = [self.history[self.history_choice]]
+            elif self.history_choice == "all" or self.history_choice is None:
+                history_inputs = list(self.history)
+            elif isinstance(self.history_choice, list):
+                history_inputs = [self.history[i] for i in self.history_choice]
+            else:
+                raise ValueError(f"Invalid history choice: {self.history_choice}")
+            logger.info(
+                f"Using history choice {self.history_choice} to select {len(history_inputs)} history inputs"
+            )
             vlm_history = VLMHistory(
                 prefix=HISTORY_PREFIX,
-                vlm_inputs=list(self.history),
+                vlm_inputs=history_inputs,
                 suffix=HISTORY_SUFFIX,
             )
 
@@ -180,8 +206,9 @@ class VLMPolicyServer:
         # clean the description
         description_str = description.split("**Output:**")[0]
         move_dict_str = json.dumps(move_dict, indent=2)
-        caption = f"""Here is your description from the last step:\n{description_str}\nHere is the move dict you decided on from the last step:\n{move_dict_str}
-        """.strip()
+        # caption = f"""Here is your description from the last step:\n{description_str}\nHere is the move dict you decided on from the last step:\n{move_dict_str}
+        # """.strip()
+        caption = f"Movement dictionary from this historical step: {move_dict_str}"
         history_vlm_input = VLMInput(prompt=caption, images=vlm_request.vlm_input.images)
         assert self.history is not None, "history must be set"
         self.history.append(history_vlm_input)
@@ -353,7 +380,10 @@ class DeployConfig:
     host: str = "0.0.0.0"  # Host IP Address
     port: int = 8000  # Host Port
     model: str = "gemini/gemini-2.5-pro-preview-03-25"  # VLM model to use
-    history_length: Optional[int] = None  # Optional history length
+    history_length: Optional[int] = None  # Optional history length (how many steps to remember)
+    history_choice: Optional[Any] = (
+        None  # Optional history choice (which index of history deque to use. Note that new steps to the deque are added to the end, so the oldest step is at index 0 and newest step is at index -1)
+    )
 
 
 @draccus.wrap()
@@ -364,7 +394,9 @@ def deploy(cfg: DeployConfig) -> None:
     Args:
         cfg: Deployment configuration
     """
-    server = VLMPolicyServer(model=cfg.model, history_length=cfg.history_length)
+    server = VLMPolicyServer(
+        model=cfg.model, history_length=cfg.history_length, history_choice=cfg.history_choice
+    )
     server.run(cfg.host, port=cfg.port)
 
 

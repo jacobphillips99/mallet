@@ -36,6 +36,8 @@ Compare the historical image(s) with the current image to identify changes in:
 - Environmental changes
 - Progress toward the task goal
 This should help you determine the impact of prior actions and adjust your plan accordingly.
+You need to critically consider the impact of each historical (action, image) tuple on the environment.
+If the historical action is incorrect, you need to reverse course or adjust your plan based on the impact of previous actions.
 """.strip()
 
 SCENE_DESCRIPTION_INSTRUCTIONS = """
