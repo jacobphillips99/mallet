@@ -33,7 +33,7 @@ def _image() -> modal.Image:
             "libvulkan-dev",
             "libvulkan1",
         )
-        .pip_install("numpy==1.24.4", "jupyterlab")
+        .pip_install("numpy==1.24.4", "jupyterlab", "json-numpy")
         .env({"CC": "gcc", "CXX": "g++"})
         .run_commands(
             f"git clone {REPO_URL} --recurse-submodules /root/SimplerEnv",
@@ -48,27 +48,48 @@ app = modal.App("simpler-env")
 img = _image()
 
 
-@app.function(
-    image=img,
-    gpu="A10G",
-    timeout=60 * 60,
-)
-def main() -> None:
+# @app.function(
+#     image=img,
+#     gpu="A10G",
+#     timeout=60 * 60,
+# )
+# def main() -> None:
+#     import subprocess
+
+#     print(f"{os.listdir('SimplerEnv')}")
+
+#     result = subprocess.run(
+#         ["python", "/root/SimplerEnv/eval_simpler.py", "--test", "--env", "widowx_open_drawer"],
+#         capture_output=True,
+#         text=True,
+#     )
+#     print(result.stdout)
+#     if result.stderr:
+#         print("Errors:", result.stderr)
+
+
+@app.function(image=img, gpu="A10G", timeout=60 * 60)
+def run_with_display() -> None:
+    import os
     import subprocess
 
-    print(f"{os.listdir('SimplerEnv')}")
+    # Set up environment variables for rendering
+    env = os.environ.copy()
+    env["DISPLAY"] = ":0"
 
-    result = subprocess.run(
-        ["python", "/root/SimplerEnv/eval_simpler.py", "--test", "--env", "widowx_open_drawer"],
-        capture_output=True,
-        text=True,
-    )
-    print(result.stdout)
-    if result.stderr:
-        print("Errors:", result.stderr)
+    # Forward rendering port
+    with modal.forward(8080) as frontend:
+        print(f"View visualization at: {frontend.url}")
+
+        # Add code to start a simple web server that streams the rendering
+        # For example:
+        result = subprocess.run(
+            ["python", "/root/SimplerEnv/tools/web_stream.py", "--port", "8080"],
+            env=env,
+        )
 
 
-# @app.function()
+# @app.function(image=img, gpu="A10G", timeout=60 * 60)
 # def run_jupyter() -> None:
 #     import secrets
 #     import subprocess
@@ -79,15 +100,16 @@ def main() -> None:
 #         url = f"{t.url}/lab/tree/SimplerEnv/example.ipynb?token={token}"
 #         print("open this in your browser rn:", url, flush=True)
 
-#         subprocess.run(
+#         +subprocess.run(
 #             [
 #                 "jupyter",
 #                 "lab",
 #                 "--no-browser",
 #                 "--ip=0.0.0.0",
 #                 "--port=8888",
-#                 "--LabApp.allow_origin='*'",
-#                 "--LabApp.allow_remote_access=1",
+#                 "--allow-root",
+#                 "--ServerApp.allow_origin='*'",
+#                 "--ServerApp.allow_remote_access=1",
 #             ],
 #             env={**os.environ, "JUPYTER_TOKEN": token},
 #         )
