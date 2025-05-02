@@ -131,11 +131,51 @@ class VLMPolicyServer:
         if self.history_length is not None:
             self.history = deque(maxlen=self.history_length)
 
+    def setup_history_from_server(self) -> VLMHistory:
+        # constructs the VLMHistory object from the server's history
+        assert (
+            self.history_length is not None and self.history is not None
+        ), "history_length must be set if history_flag is True"
+        if isinstance(self.history_choice, int):
+            history_inputs = [self.history[self.history_choice]]
+        elif self.history_choice == "all" or self.history_choice is None:
+            history_inputs = list(self.history)
+        elif isinstance(self.history_choice, list):
+            history_inputs = [self.history[i] for i in self.history_choice]
+        else:
+            raise ValueError(f"Invalid history choice: {self.history_choice}")
+        logger.info(
+            f"Using history choice {self.history_choice} to select {len(history_inputs)} history inputs"
+        )
+        vlm_history = VLMHistory(
+            prefix=HISTORY_PREFIX,
+            vlm_inputs=history_inputs,
+            suffix=HISTORY_SUFFIX,
+        )
+        return vlm_history
+
+    def setup_history_from_payload(self, payload_history: dict[str, Any]) -> VLMHistory:
+        # constructs the VLMHistory object from the payload
+        history_inputs = []
+        for step in payload_history["steps"]:
+            images = [
+                ImageInput(data=image_server_helper(image), mime_type="image/png")
+                for image in step["images"]
+            ]
+            history_inputs.append(VLMInput(prompt=step["description"], images=images))
+        vlm_history = VLMHistory(
+            prefix=HISTORY_PREFIX,
+            vlm_inputs=history_inputs,
+            suffix=HISTORY_SUFFIX,
+        )
+        return vlm_history
+
     def prep_request(
         self,
         image: Any,
         instruction: str,
         raw_proprio: Optional[np.ndarray],
+        payload_history: Optional[dict[str, Any]],  # only for testing
     ) -> VLMRequest:
         # Prepare the VLM request
         vlm_image = ImageInput(data=image_server_helper(image), mime_type="image/png")
@@ -153,41 +193,31 @@ class VLMPolicyServer:
             else "gripper_position is None"
         )
 
-        history_flag = (
+        history_server_flag = (
             self.history_length is not None and self.history is not None and len(self.history) > 0
         )
+        history_payload_flag = (
+            payload_history is not None
+            and "steps" in payload_history
+            and len(payload_history["steps"]) > 0
+        )  # for testing
+
         # Create a prompt for the VLM
         prompt = build_standard_prompt(
             prompt_template=PromptTemplate(
                 env_desc="You are looking at a robotics environment.",
                 task_desc=instruction,
                 gripper_position=gripper_position,
-                history_flag=history_flag,
+                history_flag=history_server_flag or history_payload_flag,
             )
         )
 
         # Create history context if available
         vlm_history = None
-        if history_flag:
-            assert (
-                self.history_length is not None and self.history is not None
-            ), "history_length must be set if history_flag is True"
-            if isinstance(self.history_choice, int):
-                history_inputs = [self.history[self.history_choice]]
-            elif self.history_choice == "all" or self.history_choice is None:
-                history_inputs = list(self.history)
-            elif isinstance(self.history_choice, list):
-                history_inputs = [self.history[i] for i in self.history_choice]
-            else:
-                raise ValueError(f"Invalid history choice: {self.history_choice}")
-            logger.info(
-                f"Using history choice {self.history_choice} to select {len(history_inputs)} history inputs"
-            )
-            vlm_history = VLMHistory(
-                prefix=HISTORY_PREFIX,
-                vlm_inputs=history_inputs,
-                suffix=HISTORY_SUFFIX,
-            )
+        if history_server_flag:
+            vlm_history = self.setup_history_from_server()
+        elif history_payload_flag and payload_history is not None:
+            vlm_history = self.setup_history_from_payload(payload_history)
 
         # Create and send the VLM request
         vlm_request = VLMRequest(
@@ -204,10 +234,8 @@ class VLMPolicyServer:
         self, vlm_request: VLMRequest, description: str, move_dict: dict[str, Any]
     ) -> None:
         # clean the description
-        description_str = description.split("**Output:**")[0]
+        _ = description.split("**Output:**")[0]
         move_dict_str = json.dumps(move_dict, indent=2)
-        # caption = f"""Here is your description from the last step:\n{description_str}\nHere is the move dict you decided on from the last step:\n{move_dict_str}
-        # """.strip()
         caption = f"Movement dictionary from this historical step: {move_dict_str}"
         history_vlm_input = VLMInput(prompt=caption, images=vlm_request.vlm_input.images)
         assert self.history is not None, "history must be set"
@@ -235,11 +263,13 @@ class VLMPolicyServer:
             image = payload["image"]
             instruction = payload["instruction"]
             raw_proprio = payload.get("proprio", None)  # proprio is optional
+            payload_history = payload.get("history", None)  # for testing purposes
 
             vlm_request = self.prep_request(
                 image=image,
                 instruction=instruction,
                 raw_proprio=raw_proprio,
+                payload_history=payload_history,
             )
 
             if instruction == "test connection":

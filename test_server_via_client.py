@@ -11,19 +11,16 @@ from PIL import Image
 from test_utils import AUTO_EVAL_TEST_UTILS
 
 
-def get_url(host: str, port: int, endpoint: str) -> str:
+def get_url(host: str, port: int, endpoint: str | None = None, protocol: str = "http://") -> str:
     """
-    Helper function to construct a URL from a host and port.
-    Some serverless compute orchestrators (e.g. Modal) cannot accept a port number.
-    Use a negative port number to indicate that the server is remote and does not use a port.
-
-    Includes safety check to ensure host starts with `http://` and endpoint starts with `/`
+    Get the URL for a given host and port; if port is negative, skip it.
+    Cleans the host and endpoint strings
     """
-    url = f"http://{host}"
-    if port >= 0:
-        url += f":{port}"
-    url += f"/{endpoint.lstrip('/')}"
-    return url
+    # Remove http:// or https:// from host if present
+    host_str = host.replace("http://", "").replace("https://", "")
+    port_str = f":{port}" if int(port) >= 0 else ""
+    endpoint_str = f"/{endpoint.lstrip('/')}" if endpoint else ""
+    return f"{protocol}{host_str}{port_str}{endpoint_str}"
 
 
 def test_server(
