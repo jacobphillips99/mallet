@@ -100,9 +100,15 @@ def classify_movement(move: np.ndarray, threshold: float = 0.03) -> tuple[str, n
         A tuple containing:
             - Text description of the movement
             - Quantized movement vector with elements in {-1, 0, 1}
+
+    Edited to permit predicting on just an action instead of a difference between two states
     """
-    # Calculate difference between end and start states
-    diff = move[-1] - move[0]
+    if len(move.shape) == 1:
+        # just use the action as the diff in states
+        diff = move
+    else:
+        # Calculate difference between end and start states
+        diff = move[-1] - move[0]
 
     # Normalize translation movements if they're too large
     if np.sum(np.abs(diff[:3])) > 3 * threshold:
