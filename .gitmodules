@@ -1,0 +1,3 @@
+[submodule "mse-check"]
+	path = mse-check
+	url = https://github.com/jacobphillips99/mse-check.git
