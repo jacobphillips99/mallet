@@ -5,12 +5,16 @@ import modal
 HF_CACHE_VOL = modal.Volume.from_name("hf-cache", create_if_missing=True)
 HF_CACHE_PATH = "/cache"
 
-DEFAULT_OPENVLA_PATH = "openvla/openvla-7b"
 DEFAULT_CONCURRENCY = 1  # for testing
 DEFAULT_GPU = "A10G"
 DEFAULT_TIMEOUT = 30 * 60
 
 DEFAULT_ECOT_PATH = "Embodied-CoT/ecot-openvla-7b-bridge"
+DEFAULT_OPENVLA_PATH = "openvla/openvla-7b"
+VLA_MODEL_PATHS = {
+    "openvla": DEFAULT_OPENVLA_PATH,
+    "ecot": DEFAULT_ECOT_PATH,
+}
 
 
 def get_openvla_server(openvla_path: str = DEFAULT_OPENVLA_PATH) -> Any:
@@ -31,6 +35,11 @@ def get_ecot_server(ecot_path: str = DEFAULT_ECOT_PATH) -> Any:
     server = ECOTServer(ecot_path=ecot_path)
     return server
 
+
+GET_VLA_FUNCTIONS = {
+    "openvla": get_openvla_server,
+    "ecot": get_ecot_server,
+}
 
 image = (
     modal.Image.debian_slim()
