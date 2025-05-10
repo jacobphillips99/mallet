@@ -25,16 +25,16 @@ def get_vlm_modal_image(**env_kwargs: Any) -> modal.Image:
         )
         .env(env_kwargs)
         # Install the local package
-        .add_local_python_source("vlm_autoeval_robot_benchmark")
+        .add_local_python_source("mallet")
         .add_local_python_source("modal_servers")
         # Copy necessary files
         .add_local_file(
-            "vlm_autoeval_robot_benchmark/utils/ecot_primitives/action_bounds.json",
-            "/root/vlm_autoeval_robot_benchmark/utils/ecot_primitives/action_bounds.json",
+            "mallet/utils/ecot_primitives/action_bounds.json",
+            "/root/mallet/utils/ecot_primitives/action_bounds.json",
         )
         .add_local_file(
-            "vlm_autoeval_robot_benchmark/config/rate_limits.yaml",
-            "/root/vlm_autoeval_robot_benchmark/config/rate_limits.yaml",
+            "mallet/config/rate_limits.yaml",
+            "/root/mallet/config/rate_limits.yaml",
         )
     )
 

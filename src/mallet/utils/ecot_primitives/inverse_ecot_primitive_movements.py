@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-from vlm_autoeval_robot_benchmark.utils.ecot_primitives.ecot_primitive_movements import (
+from mallet.utils.ecot_primitives.ecot_primitive_movements import (
     DIRECTION_NAMES,
     REVERSE_DIRECTION_NAMES,
 )

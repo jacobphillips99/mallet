@@ -37,29 +37,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from PIL import Image
 
-from vlm_autoeval_robot_benchmark.models.rate_limit import rate_limiter
-from vlm_autoeval_robot_benchmark.models.translation import (
+from mallet.models.rate_limit import rate_limiter
+from mallet.models.translation import (
     HISTORY_PREFIX,
     HISTORY_SUFFIX,
     PromptTemplate,
     build_standard_prompt,
 )
-from vlm_autoeval_robot_benchmark.models.vlm import (
-    VLM,
-    ImageInput,
-    VLMHistory,
-    VLMInput,
-    VLMRequest,
-    parse_vlm_response,
-)
-from vlm_autoeval_robot_benchmark.utils.ecot_primitives.inverse_ecot_primitive_movements import (
-    text_to_move_vector,
-)
-from vlm_autoeval_robot_benchmark.utils.robot_utils import (
-    GRIPPER_INDEX,
-    GRIPPER_OPEN_THRESHOLD,
-    get_gripper_position,
-)
+from mallet.models.vlm import VLM, ImageInput, VLMHistory, VLMInput, VLMRequest, parse_vlm_response
+from mallet.utils.ecot_primitives.inverse_ecot_primitive_movements import text_to_move_vector
+from mallet.utils.robot_utils import GRIPPER_INDEX, GRIPPER_OPEN_THRESHOLD, get_gripper_position
 
 json_numpy.patch()
 # Configure logging

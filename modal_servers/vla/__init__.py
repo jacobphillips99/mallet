@@ -19,7 +19,7 @@ VLA_MODEL_PATHS = {
 
 def get_openvla_server(openvla_path: str = DEFAULT_OPENVLA_PATH) -> Any:
     # import here to protect local dev environment from OpenVLA requirements
-    from vlm_autoeval_robot_benchmark.servers.openvla_server import OpenVLAServer
+    from mallet.servers.openvla_server import OpenVLAServer
 
     # would like to use flash_attention_2 but hitting nvcc issues
     server = OpenVLAServer(
@@ -30,7 +30,7 @@ def get_openvla_server(openvla_path: str = DEFAULT_OPENVLA_PATH) -> Any:
 
 
 def get_ecot_server(ecot_path: str = DEFAULT_ECOT_PATH) -> Any:
-    from vlm_autoeval_robot_benchmark.servers.ecot_server import ECOTServer
+    from mallet.servers.ecot_server import ECOTServer
 
     server = ECOTServer(ecot_path=ecot_path)
     return server
@@ -71,6 +71,6 @@ image = (
         "opencv-python",
         "git+https://github.com/openvla/openvla.git",
     )
-    .add_local_python_source("vlm_autoeval_robot_benchmark")
+    .add_local_python_source("mallet")
     .add_local_python_source("modal_servers")
 )

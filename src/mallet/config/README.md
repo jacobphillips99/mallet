@@ -11,11 +11,7 @@ API keys are read directly from environment variables:
 
 ## Rate Limit Configuration
 
-Rate limits are configured in YAML files. The system will look for a `rate_limits.yaml` file in:
-
-1. The current working directory
-2. The `~/.vlm_autoeval/` directory
-3. The package config directory
+Rate limits are configured in YAML files. The system will look for a `rate_limits.yaml` file inthe current working directory.
 
 Example `rate_limits.yaml`:
 
@@ -24,11 +20,11 @@ openai:
   gpt-4-vision-preview:
     requests_per_minute: 100
     tokens_per_minute: 100000
-  
+
 anthropic:
   claude-3-opus-20240229:
     requests_per_minute: 100
     tokens_per_minute: 100000
 ```
 
-If no configuration file is found, the system will use default rate limits defined in the code. 
+If no configuration file is found, the system will use default rate limits defined in the code.

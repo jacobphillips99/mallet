@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 import draccus
 
-from vlm_autoeval_robot_benchmark.models.rate_limit import RATE_LIMIT_STATS_PATH
+from mallet.models.rate_limit import RATE_LIMIT_STATS_PATH
 
 
 class RateMonitor:

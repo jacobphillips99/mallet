@@ -7,15 +7,17 @@
 
  ## Directory Structure
 
- modal_servers/
- ├── vla/
- │   ├── __init__.py                   # VLA server defaults and image/volume setup
- │   ├── vla_modal_server.py           # VLA FastAPI ASGI app for Modal deployment
- │   └── vla_modal_server_with_tunnel.py # VLA server with Modal tunnels for ports
- └── vlm/
-     ├── __init__.py                   # VLM server defaults, image, and secrets setup
-     ├── vlm_modal_server.py           # VLM FastAPI ASGI app for Modal deployment
-     └── vlm_modal_server_with_tunnel.py # VLM server with Modal tunnels for ports
+```
+modal_servers/
+├── vla/
+│   ├── __init__.py                   # VLA server defaults and image/volume setup
+│   ├── vla_modal_server.py           # VLA FastAPI ASGI app for Modal deployment
+│   └── vla_modal_server_with_tunnel.py # VLA server with Modal tunnels for ports
+└── vlm/
+    ├── __init__.py                   # VLM server defaults, image, and secrets setup
+    ├── vlm_modal_server.py           # VLM FastAPI ASGI app for Modal deployment
+    └── vlm_modal_server_with_tunnel.py # VLM server with Modal tunnels for ports
+```
 
  ## Prerequisites
  TODO MODAL SETUP + SECRETS

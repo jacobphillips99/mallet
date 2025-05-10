@@ -106,7 +106,7 @@ def draw_gripper(
 
 
 def get_metadata(reasoning: dict[Any, Any]) -> dict[str, Any]:
-    metadata = {"gripper": [[0, 0]], "bboxes": dict()}
+    metadata: dict[str, Any] = {"gripper": [[0, 0]], "bboxes": dict[str, list[int]]()}
 
     if f" {CotTag.GRIPPER_POSITION.value}" in reasoning:
         gripper_pos = reasoning[f" {CotTag.GRIPPER_POSITION.value}"]

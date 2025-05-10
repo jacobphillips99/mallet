@@ -6,6 +6,7 @@ import os
 
 import modal
 
+from mallet.servers.server import VLMPolicyServer
 from modal_servers.vlm import (
     DEFAULT_CONCURRENCY,
     DEFAULT_MODEL,
@@ -13,7 +14,6 @@ from modal_servers.vlm import (
     get_vlm_modal_image,
     get_vlm_modal_secrets,
 )
-from vlm_autoeval_robot_benchmark.servers.server import VLMPolicyServer
 
 # Read from environment variables or use defaults
 # this gets around Modal not accepting parameters during deployment

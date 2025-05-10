@@ -14,9 +14,9 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import litellm
 from pydantic import BaseModel, Field
 
-from vlm_autoeval_robot_benchmark.config import RateLimitConfig, load_rate_limits
-from vlm_autoeval_robot_benchmark.models.rate_limit import rate_limiter
-from vlm_autoeval_robot_benchmark.models.translation import PromptTemplate, build_standard_prompt
+from mallet.config import RateLimitConfig, load_rate_limits
+from mallet.models.rate_limit import rate_limiter
+from mallet.models.translation import PromptTemplate, build_standard_prompt
 
 logger = logging.getLogger(__name__)
 

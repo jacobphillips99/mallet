@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 import yaml
 
-from vlm_autoeval_robot_benchmark.models.rate_limit import ProviderRateLimits, RateLimitConfig
+from mallet.models.rate_limit import ProviderRateLimits, RateLimitConfig
 
 logger = logging.getLogger(__name__)
 
@@ -24,28 +24,12 @@ def load_yaml_config(file_path: str) -> Dict[str, Any]:
 
 
 def get_config_path(filename: str) -> str | None:
-    """Get the path to a configuration file.
-
-    Checks for the file in the following locations (in order):
-    1. Current working directory
-    2. ~/.vlm_autoeval/ directory
-    3. Package config directory
+    """
+    Get the path to a neighboring configuration file.
     """
     # Check in current directory
     if os.path.exists(filename):
         return filename
-
-    # Check in ~/.vlm_autoeval/ directory
-    home_dir = os.path.expanduser("~")
-    home_config_path = os.path.join(home_dir, ".vlm_autoeval", filename)
-    if os.path.exists(home_config_path):
-        return home_config_path
-
-    # Check in package config directory
-    package_dir = os.path.dirname(__file__)
-    package_config_path = os.path.join(package_dir, filename)
-    if os.path.exists(package_config_path):
-        return package_config_path
 
     return None
 

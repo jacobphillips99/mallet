@@ -3,22 +3,14 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "vlm_autoeval_robot_benchmark"
+name = "mallet"
 version = "0.1.0"
-description = "API-driven VLM server for AutoEval robot benchmarking"
+description = "Cloud-based tools and evaluations for VLMs to control real-world robots"
 authors = [
     { name = "Jacob Phillips", email = "jacob.phillips8905@gmail.com" }
 ]
 requires-python = ">=3.10"
-dependencies = [
-    "litellm",
-    "fastapi",
-    "uvicorn",
-    "pydantic",
-    "numpy",
-    "aiohttp",
-    "pyyaml",
-]
+
 
 [tool.ruff]
 line-length = 100

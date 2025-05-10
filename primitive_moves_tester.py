@@ -66,12 +66,8 @@ position of "open the drawer". At this point, we know
 import asyncio
 from typing import Any
 
-from vlm_autoeval_robot_benchmark.models.translation import PromptTemplate
-from vlm_autoeval_robot_benchmark.models.vlm import (
-    VLM,
-    create_modular_vlm_request,
-    parse_vlm_responses,
-)
+from mallet.models.translation import PromptTemplate
+from mallet.models.vlm import VLM, create_modular_vlm_request, parse_vlm_responses
 
 # Constants
 # MODEL = "gpt-4o"

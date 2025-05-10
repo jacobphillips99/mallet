@@ -1,25 +1,12 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup(
-    name="vlm_autoeval_robot_benchmark",
+    name="mallet",
     version="0.1.0",
-    description="API-driven VLM server for AutoEval robot benchmarking",
+    description="Cloud-based tools and evaluations for VLMs to control real-world robots",
     author="Jacob Phillips",
     author_email="jacob.phillips8905@gmail.com",
-    packages=find_packages(),
-    install_requires=[
-        "litellm",
-        "fastapi",
-        "uvicorn",
-        "pydantic",
-        "numpy",
-        "aiohttp",
-        "pyyaml",
-    ],
-    entry_points={
-        'console_scripts': [
-            'vlm-autoeval-server=vlm_autoeval_robot_benchmark.__main__:main',
-        ],
-    },
+    package_dir={"": "src"},
+    packages=find_packages(where="src"),
     python_requires=">=3.10",
-) 
+)

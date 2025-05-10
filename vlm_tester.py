@@ -8,14 +8,8 @@ from pathlib import Path
 
 import draccus
 
+from mallet.models.vlm import VLM, ImageInput, VLMHistory, VLMInput, VLMRequest
 from test_utils import AUTO_EVAL_TEST_UTILS
-from vlm_autoeval_robot_benchmark.models.vlm import (
-    VLM,
-    ImageInput,
-    VLMHistory,
-    VLMInput,
-    VLMRequest,
-)
 
 logger = logging.getLogger(__name__)
 

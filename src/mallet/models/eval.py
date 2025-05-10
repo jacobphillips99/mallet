@@ -1,11 +1,7 @@
 import typing as t
 
-from vlm_autoeval_robot_benchmark.models.translation import (
-    HISTORY_PREFIX,
-    HISTORY_SUFFIX,
-    PromptTemplate,
-)
-from vlm_autoeval_robot_benchmark.models.vlm import (
+from mallet.models.translation import HISTORY_PREFIX, HISTORY_SUFFIX, PromptTemplate
+from mallet.models.vlm import (
     VLM,
     VLMRequest,
     VLMResponse,
