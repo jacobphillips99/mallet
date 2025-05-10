@@ -8,6 +8,8 @@ aiohttp
 pyyaml
 draccus
 modal
+json-numpy
+pillow
 
 # Dev dependencies
 pytest

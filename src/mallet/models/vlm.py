@@ -9,7 +9,7 @@ import re
 import time
 import traceback
 import typing as t
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 import litellm
 from pydantic import BaseModel, Field
@@ -227,7 +227,7 @@ class VLM:
             formatted_images = self._prepare_images(vlm_input.images)
             present_content = [
                 [
-                    {"type": "text", "text": f"{image_key_modifier}{image_key} {i+1}:"},
+                    {"type": "text", "text": f"{image_key_modifier}{image_key} {i + 1}:"},
                     formatted_img_msg,
                 ]
                 for i, formatted_img_msg in enumerate(formatted_images)
@@ -534,7 +534,7 @@ def create_modular_vlm_request(
     )
 
 
-def parse_vlm_response(response_text: str) -> t.tuple[str, dict]:
+def parse_vlm_response(response_text: str) -> tuple[str, dict]:
     """Parse the VLM response into description and structured answer."""
     description = response_text.split("```json")[0]
 

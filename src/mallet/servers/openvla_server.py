@@ -11,7 +11,7 @@ import os.path
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional, Union
 
 # ruff: noqa: E402
 import json_numpy

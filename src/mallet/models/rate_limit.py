@@ -6,7 +6,7 @@ import logging
 import os
 import threading
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -57,7 +57,7 @@ class RateLimit:
             disable_monitoring: If True, won't write stats to file
         """
         self._provider_model_configs: dict[str, dict[str, ModelRateLimitConfig]] = {}
-        self._provider_model_states: dict[str, dict[str, Dict]] = {}
+        self._provider_model_states: dict[str, dict[str, dict]] = {}
         self._locks: dict[str, dict[str, threading.Lock]] = {}
         self._semaphores: dict[str, dict[str, asyncio.Semaphore]] = {}
 

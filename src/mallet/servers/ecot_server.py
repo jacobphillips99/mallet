@@ -9,7 +9,7 @@ import logging
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any, Union
 
 import cv2
 
