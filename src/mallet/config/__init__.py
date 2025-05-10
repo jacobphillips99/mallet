@@ -11,7 +11,7 @@ from mallet.models.rate_limit import ProviderRateLimits, RateLimitConfig
 logger = logging.getLogger(__name__)
 
 
-def load_yaml_config(file_path: str) -> Dict[str, Any]:
+def load_yaml_config(file_path: str) -> dict[str, Any]:
     """Load YAML configuration file."""
     try:
         with open(file_path, "r") as f:

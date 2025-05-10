@@ -152,7 +152,7 @@ class ECOTServer:
             trust_remote_code=True,
         ).to(self.device)
 
-    def predict_action(self, payload: Dict[str, Any]) -> JSONResponse:
+    def predict_action(self, payload: dict[str, Any]) -> JSONResponse:
         try:
             if double_encode := "encoded" in payload:
                 # Support cases where `json_numpy` is hard to install, and numpy arrays are "double-encoded" as strings
@@ -216,7 +216,7 @@ class ECOTServer:
 
         # Add health check endpoint
         @app.get("/health")
-        async def health_check() -> Dict[str, Any]:
+        async def health_check() -> dict[str, Any]:
             return {
                 "status": "healthy",
                 "model": self.ecot_path,

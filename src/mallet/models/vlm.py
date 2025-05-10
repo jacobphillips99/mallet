@@ -56,9 +56,9 @@ class VLMResponse(BaseModel):
     text: str
     model: str
     provider: str
-    usage: Dict[str, Any] = Field(default_factory=dict)
+    usage: dict[str, Any] = Field(default_factory=dict)
     response_ms: int = 0
-    raw_response: Optional[Dict[str, Any]] = None
+    raw_response: Optional[dict[str, Any]] = None
     stop_reason: Optional[str] = None
 
 
@@ -73,13 +73,13 @@ class VLMInput(BaseModel):
     """Input content for a VLM request."""
 
     prompt: str
-    images: Optional[List[ImageInput]] = None
+    images: Optional[list[ImageInput]] = None
     image_key: str = "Image"
 
 
 class VLMHistory(BaseModel):
     prefix: str
-    vlm_inputs: List[VLMInput]
+    vlm_inputs: list[VLMInput]
     suffix: str
     placement: str = "before"
 
@@ -115,12 +115,12 @@ class VLMRequest(BaseModel):
     system_prompt: Optional[str] = None
     stream: bool = False
     timeout: float = 120.0
-    extra_params: Dict[str, Any] = Field(default_factory=dict)
+    extra_params: dict[str, Any] = Field(default_factory=dict)
     history: Optional[VLMHistory] = None  # List of previous inputs in the conversation
     double_prompt: bool = False
 
 
-def model_specific_params(request: VLMRequest, payload: Dict[str, Any]) -> Dict[str, Any]:
+def model_specific_params(request: VLMRequest, payload: dict[str, Any]) -> dict[str, Any]:
     # model specific params :(
     if request.model in ["o4", "o3", "o4-mini", "o3-mini"]:
         payload["max_completion_tokens"] = request.max_tokens
@@ -183,7 +183,7 @@ class VLM:
                 rate_limiter.register_model(provider, model, model_limits)
 
     @staticmethod
-    def _prepare_images(images: List[ImageInput]) -> List[Dict[str, Any]]:
+    def _prepare_images(images: list[ImageInput]) -> list[dict[str, Any]]:
         """Prepare images for litellm API.
 
         Args:
@@ -217,7 +217,7 @@ class VLM:
         history: Optional[VLMHistory] = None,
         double_prompt: bool = False,
         image_key: str = "Image",
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         text_content = {"type": "text", "text": vlm_input.prompt}
         image_content, history_content, douple_prompt_content = [], [], []
 
@@ -258,7 +258,7 @@ class VLM:
         content.extend(douple_prompt_content)
         return content
 
-    def _prepare_historical_content(self, history: VLMHistory) -> List[Dict[str, Any]]:
+    def _prepare_historical_content(self, history: VLMHistory) -> list[dict[str, Any]]:
         """Prepare historical content to be included in the content array.
 
         Args:
@@ -283,7 +283,7 @@ class VLM:
 
         return content
 
-    def _prepare_messages(self, request: VLMRequest) -> List[Dict[str, Any]]:
+    def _prepare_messages(self, request: VLMRequest) -> list[dict[str, Any]]:
         # Prepare messages
         messages = []
 
@@ -292,7 +292,7 @@ class VLM:
             messages.append({"role": "system", "content": request.system_prompt})
 
         # Prepare user message with images if any
-        user_message: Dict[str, Any] = {"role": "user"}
+        user_message: dict[str, Any] = {"role": "user"}
 
         # Prepare content for the user message
         vlm_input = request.vlm_input
@@ -437,8 +437,8 @@ class VLM:
             raise
 
     async def generate_parallel(
-        self, requests: List[VLMRequest]
-    ) -> List[Tuple[int, Optional[VLMResponse], Optional[str]]]:
+        self, requests: list[VLMRequest]
+    ) -> list[tuple[int, Optional[VLMResponse], Optional[str]]]:
         """Generate responses from multiple VLM requests in parallel.
 
         Args:
@@ -453,7 +453,7 @@ class VLM:
 
         async def _process_request(
             index: int, request: VLMRequest
-        ) -> Tuple[int, Optional[VLMResponse], Optional[str]]:
+        ) -> tuple[int, Optional[VLMResponse], Optional[str]]:
             try:
                 response = await self.generate(request)
                 return index, response, None
@@ -534,7 +534,7 @@ def create_modular_vlm_request(
     )
 
 
-def parse_vlm_response(response_text: str) -> t.Tuple[str, dict]:
+def parse_vlm_response(response_text: str) -> t.tuple[str, dict]:
     """Parse the VLM response into description and structured answer."""
     description = response_text.split("```json")[0]
 
@@ -557,8 +557,8 @@ def parse_vlm_response(response_text: str) -> t.Tuple[str, dict]:
 
 
 def parse_vlm_responses(
-    responses: List[Tuple[int, Optional[VLMResponse], Optional[str]]],
-) -> List[Dict[str, Any]]:
+    responses: list[tuple[int, Optional[VLMResponse], Optional[str]]],
+) -> list[dict[str, Any]]:
     """Parse multiple VLM responses.
 
     Args:

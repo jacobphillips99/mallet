@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import draccus
+from test_utils import AUTO_EVAL_TEST_UTILS
 
 from mallet.models.vlm import VLM, ImageInput, VLMHistory, VLMInput, VLMRequest
-from test_utils import AUTO_EVAL_TEST_UTILS
 
 logger = logging.getLogger(__name__)
 

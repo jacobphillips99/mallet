@@ -5,7 +5,7 @@ Created by [Jacob Phillips](https://jacobdphillips.com/)
 
 MALLET is an open-source (Apache 2.0) toolkit for controlling real-world robots with cloud-hosted VLMs, as well as a suite of tools for evaluating the capabilities of VLMs in long-context multimodal settings. MALLET is built on top of [Paul Zhou's](https://github.com/zhouzypaul) [AutoEval](https://github.com/zhouzypaul/auto_eval) and [mse-check](https://github.com/zhouzypaul/mse-check), which allows us to submit action commands to real-world robots and evaluate offline policies.
 
-MALLET provides a toolkit for researchers to conduct GPU-heavy real-world robotics research without having to purchase robots or GPUs! We build several capabilities for researchers to build and evaluate multimodal agents that can operate in the real world.
+MALLET provides a toolkit for researchers to conduct GPU-heavy real-world robotics research *without* having to purchase robots or GPUs! We build several capabilities for researchers to build and evaluate multimodal agents that can operate in the real world.
 
 MALLET makes two large contributions to the robotics community:
 1. MALLET presents a framework on top of [Embodied Chain of Thought (ECoT)](https://github.com/MichalZawalski/embodied-CoT) for translating between natural language and continuous, 7-DoF robot actions, which enables VLMs to directly control real-world robots.
@@ -18,7 +18,7 @@ We use MALLET to evaluate the performance of VLMs on controlling real-world robo
 The MALLET repository is organized into three main directories:
 - `mallet`: the pip-installable toolkit for controlling real-world robots with VLMs, including cloud-based policy servers, ECoT translation, and AutoEval integration.
 - `modal_servers`: a directory of pre-built Modal wrappers for CPU-based VLM servers and GPU-based VLA servers.
-- `mse-check`: a fork of [`mse-check`](https://github.com/zhouzypaul/mse-check) with greatly expanded capabilities for serving, evaluating, and ablating multimodal policies.
+- `mse-check`: a fork of [`mse-check`](https://github.com/zhouzypaul/mse-check) with greatly expanded capabilities for serving, evaluating, visualizing, and ablating multimodal policies.
 
 ## Installation
 

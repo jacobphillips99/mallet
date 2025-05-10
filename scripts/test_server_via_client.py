@@ -7,7 +7,6 @@ import draccus
 import numpy as np
 import requests
 from PIL import Image
-
 from test_utils import AUTO_EVAL_TEST_UTILS
 
 

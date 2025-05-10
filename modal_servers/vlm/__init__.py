@@ -39,7 +39,7 @@ def get_vlm_modal_image(**env_kwargs: Any) -> modal.Image:
     )
 
 
-def get_vlm_modal_secrets() -> List[modal.Secret]:
+def get_vlm_modal_secrets() -> list[modal.Secret]:
     return [
         modal.Secret.from_name("openai-api-key"),
         modal.Secret.from_name("anthropic-api-key"),

@@ -79,7 +79,7 @@ class OpenVLAServer:
             with open(Path(self.openvla_path) / "dataset_statistics.json", "r") as f:
                 self.vla.norm_stats = json.load(f)
 
-    def predict_action(self, payload: Dict[str, Any]) -> JSONResponse:
+    def predict_action(self, payload: dict[str, Any]) -> JSONResponse:
         try:
             if double_encode := "encoded" in payload:
                 # Support cases where `json_numpy` is hard to install, and numpy arrays are "double-encoded" as strings
@@ -141,7 +141,7 @@ class OpenVLAServer:
 
         # Add health check endpoint
         @app.get("/health")
-        async def health_check() -> Dict[str, Any]:
+        async def health_check() -> dict[str, Any]:
             return {
                 "status": "healthy",
                 "model": self.openvla_path,

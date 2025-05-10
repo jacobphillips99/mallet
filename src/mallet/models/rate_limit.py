@@ -56,10 +56,10 @@ class RateLimit:
             monitor_interval: How often to update the stats file (seconds)
             disable_monitoring: If True, won't write stats to file
         """
-        self._provider_model_configs: Dict[str, Dict[str, ModelRateLimitConfig]] = {}
-        self._provider_model_states: Dict[str, Dict[str, Dict]] = {}
-        self._locks: Dict[str, Dict[str, threading.Lock]] = {}
-        self._semaphores: Dict[str, Dict[str, asyncio.Semaphore]] = {}
+        self._provider_model_configs: dict[str, dict[str, ModelRateLimitConfig]] = {}
+        self._provider_model_states: dict[str, dict[str, Dict]] = {}
+        self._locks: dict[str, dict[str, threading.Lock]] = {}
+        self._semaphores: dict[str, dict[str, asyncio.Semaphore]] = {}
 
         # Stats monitoring
         self._stats_path = stats_path
@@ -288,7 +288,7 @@ class RateLimit:
         # Start monitoring if enabled and not already started
         self._ensure_monitor_started()
 
-        result: Dict[str, Any] = {}
+        result: dict[str, Any] = {}
 
         if provider is None:
             # Return stats for all providers

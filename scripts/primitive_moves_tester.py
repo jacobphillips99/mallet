@@ -121,8 +121,7 @@ async def run_test(
         PromptTemplate(env_desc=env_desc, task_desc=task_desc, history_flag=True),
     )
     responses = await vlm.generate_parallel([request] * num_samples)
-    results = parse_vlm_responses(responses)
-    return results
+    return parse_vlm_responses(responses)
 
 
 def print_test_results(results: list[dict[str, Any]]) -> None:
