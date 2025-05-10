@@ -18,9 +18,36 @@ We use MALLET to evaluate the performance of VLMs on controlling real-world robo
 The MALLET repository is organized into three main directories:
 - `mallet`: the pip-installable toolkit for controlling real-world robots with VLMs, including cloud-based policy servers, ECoT translation, and AutoEval integration.
 - `modal_servers`: a directory of pre-built Modal wrappers for CPU-based VLM servers and GPU-based VLA servers.
-- `mse-check`: a fork of [`mse-check`](https://github.com/zhouzypaul/mse-check) with greatly expanded capabilities for serving, evaluating, visualizing, and ablating multimodal policies.
+- `mse-check`: a fork of [`mse-check`](https://github.com/zhouzypaul/mse-check) with greatly expanded capabilities for serving, evaluating, visualizing, and ablating multimodal policies with real-world data.
 
 ## Installation
+
+MALLET requires Python 3.10 or higher. We recommend using `uv` for fast and reliable dependency management.
+
+1. Install `uv` if you haven't already:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+2. Clone the repository and its submodules:
+```bash
+git clone --recursive https://github.com/jacobphillips99/mallet.git
+cd mallet
+```
+
+3. Create and activate a virtual environment with Python 3.10:
+```bash
+uv venv .venv --python=python3.10
+source .venv/bin/activate  # On Unix/macOS
+# or
+.venv\Scripts\activate  # On Windows
+```
+
+4. Install the package and its dependencies:
+```bash
+uv pip install -r requirements.txt
+uv pip install -e .
+```
 
 ## MALLET Toolkit
 
