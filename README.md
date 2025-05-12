@@ -58,7 +58,11 @@ The ECoT project develops a [set of primitives for translating robot actions int
 ```bash
 ECOT([0.7, -0.1, ..., 1.0]) --> "Move left, down, open gripper"
 
-MALLET("Left 90% in order to align with the object, Down 10% to grasp object, Open Gripper 100% to prepare for grasp") --> [0.7, -0.1, ..., 1.0]
+MALLET("""
+Left 90% in order to align with the object,
+Down 10% to grasp object,
+Open Gripper 100% to prepare for grasp.
+""") --> [0.7, -0.1, ..., 1.0]
 ```
 
 In order to translate a direction and magnitude into a robot action, we first calculate the [action bounds](https://github.com/jacobphillips99/mallet/blob/main/src/mallet/utils/ecot_primitives/action_bounds.json) for the given robot. We select the action bounds based on the collected dataset, setting the bounds to the 10th and 90th percentiles of the data. We then scale the direction and magnitude to the appropriate range, and convert the normalized action into a robot action. This makes it easy for VLMs to predict actions that are sensible for the robot's action space. Additionally, we provide a set of prompts describing the robot, the methodology, the action space, the environment, and the output format. These components are extremely modular and enable simple integration with the rest of the MALLEt toolkit; all prompts and a special `PromptBuilder` class are availabe in [`mallet.models.translation.py`](https://github.com/jacobphillips99/mallet/blob/main/src/mallet/models/translation.py).
@@ -148,17 +152,11 @@ Paul Zhou's `mse-check` is lightweight dataset of robot trajectories that can be
 ## Evaluation
 Does this work? Unfortuantely, the answer right now is no. We are working on it! Below are a few examples of VLMs controlling real-world robots in the AutoEval framework.
 
-<video width="320" height="240" controls>
-  <source src="assets/gemini_2_5_flash_open_drawer.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+![Gemini 2.5 Flash Open Drawer](assets/gemini_2_5_flash_open_drawer.gif)
 
 *Demonstration of `gemini-2.5-flash-preview-04-17` attempting the task "Open the drawer" in an AutoEval evaluation cell.*
 
-<video width="320" height="240" controls>
-  <source src="assets/o4_mini_close_drawer.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+![o4-mini Close Drawer](assets/o4_mini_close_drawer.gif)
 
 *Demonstration of `o4-mini` attempting the task "Close the drawer" in an AutoEval evaluation cell.*
 
