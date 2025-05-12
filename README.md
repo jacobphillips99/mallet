@@ -3,9 +3,9 @@ Created by [Jacob Phillips](https://jacobdphillips.com/)
 
 <img src="assets/mallet_system_diagram.png" alt="MALLET System Diagram"/>
 
-MALLET is an open-source (Apache 2.0) toolkit for controlling real-world robots with cloud-hosted VLMs, as well as a suite of tools for evaluating the capabilities of VLMs in long-context multimodal settings. MALLET is built on top of [Paul Zhou's](https://github.com/zhouzypaul) [AutoEval](https://github.com/zhouzypaul/auto_eval) and [mse-check](https://github.com/zhouzypaul/mse-check), which allows us to submit action commands to real-world robots and evaluate offline policies.
+MALLET is an open-source (Apache 2.0) toolkit for controlling real-world robots with cloud-hosted vision-language models (VLMs), as well as a suite of tools for evaluating the capabilities of VLMs in long-context multimodal settings. MALLET is built on top of [Paul Zhou's](https://github.com/zhouzypaul) [AutoEval](https://github.com/zhouzypaul/auto_eval) and [mse-check](https://github.com/zhouzypaul/mse-check), which allows us to submit action commands to real-world robots and evaluate offline policies.
 
-MALLET provides a toolkit for researchers to conduct GPU-heavy real-world robotics research *without* having to purchase robots or GPUs! We build several capabilities for researchers to build and evaluate multimodal agents that can operate in the real world.
+MALLET provides a toolkit for researchers to conduct GPU-heavy real-world robotics research *without* having to purchase robots or GPUs! We build several capabilities for researchers to build and evaluate multimodal agents that can operate in the real world. We also provide code to run vision-language-action (VLA) in the cloud.
 
 MALLET makes two large contributions to the robotics community:
 1. MALLET presents a framework on top of [Embodied Chain of Thought (ECoT)](https://github.com/MichalZawalski/embodied-CoT) for translating between natural language and continuous, 7-DoF robot actions, which enables VLMs to directly control real-world robots.
@@ -102,10 +102,9 @@ server = VLMPolicyServer(model="gpt-4o-mini", history_length=10, history_choice=
 server.run(host="0.0.0.0", port=8000)
 ```
 
-This spins up a FastAPI server on the localhost that can be hit with a payload of an image and instruction. Upon hitting the `/act` endpoint, the VLM object sends a remote API request to the model (in this case, `gpt-4o-mini`) and then translates the natural language into a continous robot action.
+This spins up a FastAPI server on the localhost that can be hit with a payload of an image and instruction. Upon hitting the `/act` endpoint, the VLM object sends a remote API request to the model (in this case, `gpt-4o-mini`) and then translates the natural language into a continous robot action. The VLMPolicyServer also enables history, which can be used to record and use historical requests and responses. The server can be instructed to internally record and use historical inputs and outputs or to accept a `history_dict` parameter to use external history sent from the client. History is controlled via two parameters: `history_length` and `history_choice`. `history_length` controls how many steps of history to keep in the server's memory and must be a positive integer; we ablate over [1, 2, 4, 8, 10, 16, 32] steps. `history_choice` controls which steps of history to use for context in the prompt; we ablate over `[first, last, alternate, third, all]` strategies, which describe selecting the first, last, every other, every third, or all steps of history. When history length is set to 0, the history choice is `None`; when history length is set to 1, the history choice is `one` as all methods result in the same choice.
 
 We also provide compatible forks of servers for OpenVLA (from [AutoEval](https://github.com/zhouzypaul/auto_eval/blob/main/auto_eval/policy_server/openvla_server.py) and [the original authors](https://github.com/openvla/openvla/blob/main/vla-scripts/deploy.py)) and [ECoT](https://colab.research.google.com/drive/1CzRKin3T9dl-4HYBVtuULrIskpVNHoAH?usp=sharing#scrollTo=owVajjweDopA).
-
 
 
 ### Rate Limiting and Monitoring
@@ -126,7 +125,7 @@ The VLM Modal server wraps the `VLMPolicyServer` in a Modal app, which gets depl
 MODEL="gpt-4o-mini" modal deploy modal_servers/vlm/vlm_modal_server.py
 ```
 
-To use the tunnel approach, we run the neighboring [`vlm_modal_server_with_tunnel.py`](https://github.com/jacobphillips99/mallet/blob/main/modal_servers/vlm/vlm_modal_server_with_tunnel.py) script, which deploys the app, opens a tunnel, and starts the server. This also enables the server to use history; this can be configured by setting the `HISTORY_LENGTH` and `HISTORY_CHOICE` environment variables. Once deployed, the server can be hit with a payload of an image and instruction and either collect history internally or accept a `history_dict` parameter to use external history from the client. The logs will contain the instantiated host and port.
+To use the tunnel approach, we run the neighboring [`vlm_modal_server_with_tunnel.py`](https://github.com/jacobphillips99/mallet/blob/main/modal_servers/vlm/vlm_modal_server_with_tunnel.py) script, which deploys the app, opens a tunnel, and starts the server. This also enables the server to use history; this can be configured by setting the `HISTORY_LENGTH` and `HISTORY_CHOICE` environment variables. The logs will contain the instantiated host and port.
 
 ```bash
 HISTORY_LENGTH=10 HISTORY_CHOICE="all" modal run modal_servers/vlm/vlm_modal_server_with_tunnel.py
@@ -144,12 +143,34 @@ modal run modal_servers/vla/vla_modal_server_with_tunnel.py
 Note that GPU-based Modal servers have a longer spin-up time than CPU-based servers as they must download and cache model weights. It is reccomended to send a test request or to "warm" a pod before using the server in a performance-critical application such as `AutoEval`.
 
 ## mse-check
-Paul Zhou's `mse-check` is lightweight dataset of robot trajectories that can be used to evaluate the performance of multimodal policies. The framework was originally designed as a simple check that policies for AutoEval are working as expected, but `mallet` extends it to testing general VLM performance across a variety of variables. We develop a testing framework that allows us to ablate prompt, history, and inference time-cost tradeoffs, and to test the performance of VLMs in long-context multimodal settings. We extend `mse-check` to support parallel, asynchronous policy evaluation, local or remote execution, and develop sophisticated tools for visualizing and analyzing policy performance, including a hyperparameter sweep tool. See the main test script at [`mse-check/test_policy_client_mse.py`](https://github.com/jacobphillips99/mallet/blob/main/mse-check/test_policy_client_mse.py), the sweep tool at [`mse-check/sweep_test.py](https://github.com/jacobphillips99/mse-check/blob/main/sweep_test.py), or visualization notebook at [`mse-check/compare_models.ipynb`](https://github.com/jacobphillips99/mse-check/blob/main/compare_models.ipynb).
+Paul Zhou's `mse-check` is lightweight dataset of robot trajectories that can be used to evaluate the performance of multimodal policies. The framework was originally designed as a simple check that policies for AutoEval are working as expected, but `mallet` extends it to testing general VLM performance across a variety of variables. We develop a testing framework that allows us to ablate prompt, history, and inference time-cost tradeoffs, and to test the performance of VLMs in long-context multimodal settings. We extend `mse-check` to support parallel, asynchronous policy evaluation, local or remote execution, and develop sophisticated tools for visualizing and analyzing policy performance, including a hyperparameter sweep tool. See the main test script at [`mse-check/test_policy_client_mse.py`](https://github.com/jacobphillips99/mallet/blob/main/mse-check/test_policy_client_mse.py), the sweep tool at [`mse-check/sweep_test.py`](https://github.com/jacobphillips99/mse-check/blob/main/sweep_test.py), or visualization notebook at [`mse-check/compare_models.ipynb`](https://github.com/jacobphillips99/mse-check/blob/main/compare_models.ipynb).
 
 ## Evaluation
-Using the updated `mse-check` tool, we evaluate the impact of historical images and actions on the performance of VLMs to understand the inference-cost tradeoffs. We evaluate accumulating a history of images and actions over the last `[0, 1, 2, 4, 8, 10, 16, 32]` steps and subselecting from that history with `[first, last, alternate, third, all]` strategies. We evaluate the performance of a variety of providers and models, including OpenAI (`gpt-4o`, `gpt-4o-mini`, `o4-mini`), Anthropic (`claude-3-7-sonnet`, `claude-3-5-sonnet`), and Gemini (`gemini-2-5-pro`, `gemini-2-5-flash`). See the rate limit configuration at [`src/mallet/config/rate_limits.yaml`](https://github.com/jacobphillips99/mallet/blob/main/src/mallet/config/rate_limits.yaml) for the full list of providers and models, including specific dates for model releases.
+Does this work? Unfortuantely, the answer right now is no. We are working on it! Below are a few examples of VLMs controlling real-world robots in the AutoEval framework.
 
- TODO TODO TODO
+<div style="display: flex; justify-content: space-between; gap: 20px;">
+  <div style="flex: 1;">
+    <video width="100%" controls>
+      <source src="assets/gemini_2_5_flash_open_drawer.mp4" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+    <p style="text-align: center;"><em>Demonstration of `gemini-2.5-flash-preview-04-17` attempting the task "Open the drawer" in an AutoEval evaluation cell.</em></p>
+  </div>
+
+  <div style="flex: 1;">
+    <video width="100%" controls>
+      <source src="assets/o4_mini_close_drawer.mp4" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+    <p style="text-align: center;"><em>Demonstration of `o4-mini` attempting the task "Close the drawer" in an AutoEval evaluation cell.</em></p>
+  </div>
+</div>
+
+In both cases, the VLM understands the task and is able to make a plan, but struggles with depth perception and perspective to successfully complete the task. Models that specialize in embodied reasoning, like [`Gemini Robotics ER`](https://storage.googleapis.com/deepmind-media/gemini-robotics/gemini_robotics_report.pdf) may perform better on these setups! Since we were unable to find a model that could make progress on these tasks, we use `mse-check` to evaluate the performance of VLMs in long-context multimodal settings.
+
+Using the updated `mse-check` framework, we evaluate the impact of historical images and actions on the performance of VLMs to understand the inference-cost tradeoffs. We evaluate accumulating a history of images and actions over the last `[0, 1, 2, 4, 8, 10, 16, 32]` steps and subselecting from that history with `[first, last, alternate, third, all]` strategies. We evaluate the performance of a variety of providers and models, including OpenAI (`gpt-4o`, `gpt-4o-mini`, `o4-mini`), Anthropic (`claude-3-7-sonnet`, `claude-3-5-sonnet`), and Gemini (`gemini-2-5-pro`, `gemini-2-5-flash`). See the rate limit configuration at [`src/mallet/config/rate_limits.yaml`](https://github.com/jacobphillips99/mallet/blob/main/src/mallet/config/rate_limits.yaml) for the full list of providers and models, including specific dates for model releases.
+
+
 
 ## Acknowledgements and Citation
 This project was developed by [Jacob Phillips](https://jacobdphillips.com) as a part of the [Andreessen Horowitz American Dynamism Engineering Fellows program](https://a16z.com/the-american-dynamism-engineering-fellows-program/). Special thanks to the American Dynamism team for their support and feedback on the project.
