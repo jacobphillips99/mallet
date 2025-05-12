@@ -1,26 +1,12 @@
 # Modal Servers
-
- This directory contains Modal deployments for two types of robot policy servers using FastAPI:
-
- - **VLA (Vision-Language-Action)** via OpenVLA model
- - **VLM (Vision Language Model)** via VLMPolicyServer
-
- ## Directory Structure
-
-```
-modal_servers/
-├── vla/
-│   ├── __init__.py                   # VLA server defaults and image/volume setup
-│   ├── vla_modal_server.py           # VLA FastAPI ASGI app for Modal deployment
-│   └── vla_modal_server_with_tunnel.py # VLA server with Modal tunnels for ports
-└── vlm/
-    ├── __init__.py                   # VLM server defaults, image, and secrets setup
-    ├── vlm_modal_server.py           # VLM FastAPI ASGI app for Modal deployment
-    └── vlm_modal_server_with_tunnel.py # VLM server with Modal tunnels for ports
-```
+See the main [README](https://github.com/jacobphillips99/mallet/blob/main/README.md) for more information on how to deploy the Modal apps.
 
  ## Prerequisites
- TODO MODAL SETUP + SECRETS
+
+ - [Modal](https://modal.com/docs/guide/getting-started)
+ - [MALLET](https://github.com/jacobphillips99/mallet/blob/main/README.md)
+
+ Using MALLET Modal VLM Servers requires adding any API keys to the Modal secrets manager. Go to the Modal Secrets dashboard at `https://modal.com/secrets/your-name-here/main` and add the necessary secrets for your model provider. The default VLM modal server provisions API keys for OpenAI, Anthropic, Gemini, and XAI.
 
  ## Configuration
 

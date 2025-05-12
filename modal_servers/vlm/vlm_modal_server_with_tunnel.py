@@ -53,12 +53,15 @@ def serve_vlm_tunnel() -> None:
     # Initialize the VLM policy server with model from environment variable
     model = os.environ.get("MODEL", DEFAULT_MODEL)
     history_length = os.environ.get("HISTORY_LENGTH", None)
+    history_choice = os.environ.get("HISTORY_CHOICE", None)
     server = VLMPolicyServer(
         model=model,
         history_length=int(history_length) if history_length is not None else None,
+        history_choice=history_choice,
     )
-    # Serve the server on a tunnel to expose port; find tcp socket in logs
-    with modal.forward(8000, unencrypted=True) as tunnel:
+    # Serve the server on a tunnel to expose port; find tcp host, port from socket in logs
+    internal_port = 8000
+    with modal.forward(internal_port, unencrypted=True) as tunnel:
         host, port = tunnel.tcp_socket
         print(f"hit me at {host}:{port}")
-        server.run(host="0.0.0.0", port=8000)
+        server.run(host="0.0.0.0", port=internal_port)

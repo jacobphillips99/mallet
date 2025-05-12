@@ -113,10 +113,43 @@ To safely scale and handle API usage, MALLET includes a real-time outbound reque
 
 ## Modal Servers
 
+Modal is a compute orchestration platform that allows you to deploy python functions and FastAPI apps in the cloud. We use Modal to deploy AutoEval-compliant VLM and VLA servers that can be used to serve and evaluate multimodal and robot policies without the local compute resources to run them. We develop [CPU-based VLM servers](https://github.com/jacobphillips99/mallet/tree/main/modal_servers/vlm) and [GPU-based VLA servers](https://github.com/jacobphillips99/mallet/tree/main/modal_servers/vla) for MALLET.
+
+For both server types, we also develop two options: either a typical, autoscaling Modal deployment that treats each function call as a new container, or a Modal `tunnel` deployment that creates a single server that opens a connection on a given port. The tunnel approach removes some latency and enables stateful servers that can be used to record and use historical requests and responses, but must be manually opened and closed. The tunnel approach also provides a port that can be specified in the URL, which is useful for testing and debugging.
+
+Throughout this repo and `AutoEval`, we use the [sentinel value of `-1`](https://github.com/jacobphillips99/mse-check/blob/004001deed65049cefe09b7c62ee61f129c00072/utils/server.py#L22) to indicate that a server is deployed on a cloud-based service that obscures the underlying port and removes it from the URL.
+
+#### VLM Modal Server
+The VLM Modal server wraps the `VLMPolicyServer` in a Modal app, which gets deployed as a Modal ASGI app. The Modal app is defined in [`modal_servers/vlm/vlm_modal_server.py`](https://github.com/jacobphillips99/mallet/blob/main/modal_servers/vlm/vlm_modal_server.py). At deployment-time, the Modal app is configured with the `model` parameter, which tells the `VLMPolicyServer` which remote model provider to use for API calls.
+
+```bash
+MODEL="gpt-4o-mini" modal deploy modal_servers/vlm/vlm_modal_server.py
+```
+
+To use the tunnel approach, we run the neighboring [`vlm_modal_server_with_tunnel.py`](https://github.com/jacobphillips99/mallet/blob/main/modal_servers/vlm/vlm_modal_server_with_tunnel.py) script, which deploys the app, opens a tunnel, and starts the server. This also enables the server to use history; this can be configured by setting the `HISTORY_LENGTH` and `HISTORY_CHOICE` environment variables. Once deployed, the server can be hit with a payload of an image and instruction and either collect history internally or accept a `history_dict` parameter to use external history from the client. The logs will contain the instantiated host and port.
+
+```bash
+HISTORY_LENGTH=10 HISTORY_CHOICE="all" modal run modal_servers/vlm/vlm_modal_server_with_tunnel.py
+```
+
+#### VLA Modal Server
+The VLA Modal server is a simple wrapper on top of the servers provided in the `mallet.servers` module. The [Modal app selects a GPU runtime](https://github.com/jacobphillips99/mallet/blob/main/modal_servers/vla/vla_modal_server.py), mounts the HuggingFace cache, and runs the server. Similarly to the VLM Modal servers, the VLA Modal server can be deployed with a tunnel to expose the port but must be manually spun up and down.
+
+```bash
+modal deploy modal_servers/vla/vla_modal_server.py
+# or optionally with a tunnel to expose the port
+modal run modal_servers/vla/vla_modal_server_with_tunnel.py
+```
+
+Note that GPU-based Modal servers have a longer spin-up time than CPU-based servers as they must download and cache model weights. It is reccomended to send a test request or to "warm" a pod before using the server in a performance-critical application such as `AutoEval`.
 
 ## mse-check
+Paul Zhou's `mse-check` is lightweight dataset of robot trajectories that can be used to evaluate the performance of multimodal policies. The framework was originally designed as a simple check that policies for AutoEval are working as expected, but `mallet` extends it to testing general VLM performance across a variety of variables. We develop a testing framework that allows us to ablate prompt, history, and inference time-cost tradeoffs, and to test the performance of VLMs in long-context multimodal settings. We extend `mse-check` to support parallel, asynchronous policy evaluation, local or remote execution, and develop sophisticated tools for visualizing and analyzing policy performance, including a hyperparameter sweep tool. See the main test script at [`mse-check/test_policy_client_mse.py`](https://github.com/jacobphillips99/mallet/blob/main/mse-check/test_policy_client_mse.py), the sweep tool at [`mse-check/sweep_test.py](https://github.com/jacobphillips99/mse-check/blob/main/sweep_test.py), or visualization notebook at [`mse-check/compare_models.ipynb`](https://github.com/jacobphillips99/mse-check/blob/main/compare_models.ipynb).
 
 ## Evaluation
+Using the updated `mse-check` tool, we evaluate the impact of historical images and actions on the performance of VLMs to understand the inference-cost tradeoffs. We evaluate accumulating a history of images and actions over the last `[0, 1, 2, 4, 8, 10, 16, 32]` steps and subselecting from that history with `[first, last, alternate, third, all]` strategies. We evaluate the performance of a variety of providers and models, including OpenAI (`gpt-4o`, `gpt-4o-mini`, `o4-mini`), Anthropic (`claude-3-7-sonnet`, `claude-3-5-sonnet`), and Gemini (`gemini-2-5-pro`, `gemini-2-5-flash`). See the rate limit configuration at [`src/mallet/config/rate_limits.yaml`](https://github.com/jacobphillips99/mallet/blob/main/src/mallet/config/rate_limits.yaml) for the full list of providers and models, including specific dates for model releases.
+
+ TODO TODO TODO
 
 ## Acknowledgements and Citation
 This project was developed by [Jacob Phillips](https://jacobdphillips.com) as a part of the [Andreessen Horowitz American Dynamism Engineering Fellows program](https://a16z.com/the-american-dynamism-engineering-fellows-program/). Special thanks to the American Dynamism team for their support and feedback on the project.
