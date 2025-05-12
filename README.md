@@ -148,27 +148,41 @@ Paul Zhou's `mse-check` is lightweight dataset of robot trajectories that can be
 ## Evaluation
 Does this work? Unfortuantely, the answer right now is no. We are working on it! Below are a few examples of VLMs controlling real-world robots in the AutoEval framework.
 
-<div style="display: flex; justify-content: space-between; gap: 20px;">
-  <div style="flex: 1;">
-    <video width="100%" controls>
-      <source src="assets/gemini_2_5_flash_open_drawer.mp4" type="video/mp4">
-      Your browser does not support the video tag.
-    </video>
-    <p style="text-align: center;"><em>Demonstration of `gemini-2.5-flash-preview-04-17` attempting the task "Open the drawer" in an AutoEval evaluation cell.</em></p>
-  </div>
+<video width="320" height="240" controls>
+  <source src="assets/gemini_2_5_flash_open_drawer.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 
-  <div style="flex: 1;">
-    <video width="100%" controls>
-      <source src="assets/o4_mini_close_drawer.mp4" type="video/mp4">
-      Your browser does not support the video tag.
-    </video>
-    <p style="text-align: center;"><em>Demonstration of `o4-mini` attempting the task "Close the drawer" in an AutoEval evaluation cell.</em></p>
-  </div>
-</div>
+*Demonstration of `gemini-2.5-flash-preview-04-17` attempting the task "Open the drawer" in an AutoEval evaluation cell.*
+
+<video width="320" height="240" controls>
+  <source src="assets/o4_mini_close_drawer.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
+*Demonstration of `o4-mini` attempting the task "Close the drawer" in an AutoEval evaluation cell.*
 
 In both cases, the VLM understands the task and is able to make a plan, but struggles with depth perception and perspective to successfully complete the task. Models that specialize in embodied reasoning, like [`Gemini Robotics ER`](https://storage.googleapis.com/deepmind-media/gemini-robotics/gemini_robotics_report.pdf) may perform better on these setups! Since we were unable to find a model that could make progress on these tasks, we use `mse-check` to evaluate the performance of VLMs in long-context multimodal settings.
 
-Using the updated `mse-check` framework, we evaluate the impact of historical images and actions on the performance of VLMs to understand the inference-cost tradeoffs. We evaluate accumulating a history of images and actions over the last `[0, 1, 2, 4, 8, 10, 16, 32]` steps and subselecting from that history with `[first, last, alternate, third, all]` strategies. We evaluate the performance of a variety of providers and models, including OpenAI (`gpt-4o`, `gpt-4o-mini`, `o4-mini`), Anthropic (`claude-3-7-sonnet`, `claude-3-5-sonnet`), and Gemini (`gemini-2-5-pro`, `gemini-2-5-flash`). See the rate limit configuration at [`src/mallet/config/rate_limits.yaml`](https://github.com/jacobphillips99/mallet/blob/main/src/mallet/config/rate_limits.yaml) for the full list of providers and models, including specific dates for model releases.
+Using the updated `mse-check` framework, we evaluate the impact of historical images and actions on the performance of VLMs to understand the inference-cost tradeoffs. We evaluate accumulating a history of images and actions over the last `[0, 1, 2, 4, 8, 10, 16, 32]` steps and subselecting from that history with `[first, last, alternate, third, all]` strategies. We evaluate the performance of a variety of providers and models, including OpenAI (`gpt-4o`, `gpt-4o-mini`, `o4-mini`), Anthropic (`claude-3-7-sonnet`, `claude-3-5-sonnet`), and Gemini (`gemini-2-5-pro`, `gemini-2-5-flash`). See the rate limit configuration at [`src/mallet/config/rate_limits.yaml`](https://github.com/jacobphillips99/mallet/blob/main/src/mallet/config/rate_limits.yaml) for the full list of providers and models, including specific dates for model releases. We ran a total of 170 experiments across models, history lengths, history choices, and repeats for statistical significance.
+
+<img src="assets/best_any_way_mse.png" alt="Best MSE results for each model + OpenVLA baseline"/>
+
+*Best overall mean-squared-error (MSE) results for each VLM + OpenVLA baseline.*
+
+Interestingly, the overall best-performing model is `claude-3-7-sonnet`, despite ranking significantly lower than the other models on other multimodal benchmarks like [MMMU](https://mmmu-benchmark.github.io/#leaderboard).
+
+<img src="assets/average_mse_by_model.png" alt="Average MSE results for each model + OpenVLA baseline"/>
+
+*Averaged mean-squared-error (MSE) results for each VLM + OpenVLA baseline.*
+
+However, when averaging across all experiments for a given model, `gemini-2-5-pro-new` (the version released 05/06/2025) performs better than all other models. Notably, the Gemini and Claude models perform significantly better than the OpenAI models.
+
+<img src="assets/mse_facet_chart.png" alt="MSE facet chart for each model"/>
+
+*Facet chart showing the performance of each model across all history lengths and choices.*
+
+We also present a representation of the performance of each model across all history lengths and choices. The face chart shows the performance of each experiment, with the axes synced across each chart. The x-axis measures `history_length`; the y-axis measures `mse`; the color of each dot represents the `history_choice` strategy; the size of each marker measures `expected_frames`, which represents the number of frames selected from the history according to the `history_choice` strategy (e.g., if `history_length=10` and `history_choice="alternating"`, then `expected_frames=5`). The dotted line represents the OpenVLA baseline with `history_length=0`.
 
 
 
