@@ -1,4 +1,4 @@
-# Rate limit configuration for VLM providers and models
+# Rate limit configuration for API providers and models
 openai:
   gpt-4o:
     requests_per_minute: 5_000
@@ -16,40 +16,33 @@ openai:
 anthropic:
   claude-3-7-sonnet-20250219:
     requests_per_minute: 1_000
-    tokens_per_minute: 40_000 # technically input token limit
+    tokens_per_minute: 40_000
 
   claude-3-5-sonnet-20241022:
     requests_per_minute: 1_000
-    tokens_per_minute: 80_000 # technically input token limit
+    tokens_per_minute: 80_000
 
-  claude-3-5-haiku:
+  claude-3-5-haiku-20241022:
     requests_per_minute: 1_000
-    tokens_per_minute: 100_000 # technically input token limit
+    tokens_per_minute: 100_000
 
 gemini:
-  gemini/gemini-2.0-flash: # weird but makes litellm happy without needing Google Vertex API
+  gemini/gemini-2.0-flash:
     requests_per_minute: 2_000
-    tokens_per_minute: 4_000_000 # technically input token limit
+    tokens_per_minute: 4_000_000
 
   gemini/gemini-2.0-pro-exp:
     requests_per_minute: 20
-    tokens_per_minute: 2_000_000 # technically input token limit
+    tokens_per_minute: 2_000_000
 
   gemini/gemini-2.5-pro-preview-03-25:
     requests_per_minute: 150
-    tokens_per_minute: 2_000_000 # technically input token limit
+    tokens_per_minute: 2_000_000
 
   gemini/gemini-2.5-flash-preview-04-17:
     requests_per_minute: 150
-    tokens_per_minute: 2_000_000 # technically input token limit
+    tokens_per_minute: 2_000_000
 
   gemini/gemini-2.5-pro-preview-05-06:
     requests_per_minute: 150
-    tokens_per_minute: 2_000_000 # technically input token limit
-
-
-
-xai: # no api yet :/
-  xai/grok-3-beta:
-    requests_per_minute: 600
-    tokens_per_minute: 1_000_000
+    tokens_per_minute: 2_000_000
