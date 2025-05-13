@@ -154,6 +154,7 @@ Does this work? Unfortuantely, the answer right now is no. We are working on it!
 
 ![Gemini 2.5 Flash Open Drawer](assets/gemini_2_5_flash_open_drawer.gif)
 
+
 *Demonstration of `gemini-2.5-flash-preview-04-17` attempting the task "Open the drawer" in an AutoEval evaluation cell.*
 
 ![o4-mini Close Drawer](assets/o4_mini_close_drawer.gif)
