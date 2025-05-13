@@ -1,26 +1,25 @@
 # MALLET: Multimodal Autonomy Language and Long-Context Evaluation Toolkit
+
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 Created by [Jacob Phillips](https://jacobdphillips.com/)
 
 <img src="assets/mallet_system_diagram.png" alt="MALLET System Diagram"/>
+<p align="center"><em>System diagram showing MALLET's architecture for controlling real-world robots using cloud-hosted VLMs</em></p>
 
-MALLET is an open-source (Apache 2.0) toolkit for controlling real-world robots with cloud-hosted vision-language models (VLMs), as well as a suite of tools for evaluating the capabilities of VLMs in long-context multimodal settings. MALLET is built on top of [Paul Zhou's](https://github.com/zhouzypaul) [AutoEval](https://github.com/zhouzypaul/auto_eval) and [mse-check](https://github.com/zhouzypaul/mse-check), which allows us to submit action commands to real-world robots and evaluate offline policies.
+MALLET (Multimodal Autonomy Language and Long-Context Evaluation Toolkit) is an open-source (Apache 2.0) toolkit for controlling real-world robots with cloud-hosted vision-language models (VLMs), as well as a suite of tools for evaluating the capabilities of VLMs in long-context multimodal settings. MALLET is built on top of [Paul Zhou's](https://github.com/zhouzypaul) [AutoEval](https://github.com/zhouzypaul/auto_eval) and [mse-check](https://github.com/zhouzypaul/mse-check), which allows us to submit action commands to real-world robots and evaluate offline policies.
 
-MALLET provides a toolkit for researchers to conduct GPU-heavy real-world robotics research *without* having to purchase robots or GPUs! We build several capabilities for researchers to build and evaluate multimodal agents that can operate in the real world. We also provide code to run vision-language-action (VLA) in the cloud.
+MALLET provides a toolkit for researchers to conduct GPU-heavy real-world robotics research *without* having to purchase robots or GPUs! We build several capabilities for researchers to build and evaluate multimodal agents that can operate in the real world. We also provide code to run vision-language-action (VLA) models in the cloud.
 
 MALLET makes two large contributions to the robotics community:
-1. MALLET presents a framework on top of [Embodied Chain of Thought (ECoT)](https://github.com/MichalZawalski/embodied-CoT) for translating between natural language and continuous, 7-DoF robot actions, which enables VLMs to directly control real-world robots.
+1. MALLET presents a framework on top of [Embodied Chain of Thought (ECoT)](https://github.com/MichalZawalski/embodied-CoT) for translating between natural language and continuous, 7 degree-of-freedom (DoF) robot actions, which enables VLMs to directly control real-world robots.
 2. MALLET enables robot researchers to use cloud-based, autoscaling GPU compute frameworks like [Modal](https://modal.com/) to serve VLM or VLA-based policies instead of exposing their own computers.
 
 We use MALLET to evaluate the performance of VLMs on controlling real-world robots in `AutoEval`. We also use MALLET with `mse-check` to evaluate the performance of VLMs in long-context multimodal settings, ablating prompts, history selection, and inference time-cost tradeoffs.
 
 ## Overview
-
-The MALLET repository is organized into three main directories:
-- `mallet`: the pip-installable toolkit for controlling real-world robots with VLMs, including cloud-based policy servers, ECoT translation, and AutoEval integration.
-- `modal_servers`: a directory of pre-built Modal wrappers for CPU-based VLM servers and GPU-based VLA servers.
-- `mse-check`: a fork of [`mse-check`](https://github.com/zhouzypaul/mse-check) with greatly expanded capabilities for serving, evaluating, visualizing, and ablating multimodal policies with real-world data.
-
-Jump to:
 - [Installation](#installation)
 - [MALLET Toolkit](#mallet-toolkit)
     - [Language-to-Action Backtranslation](#language-to-action-backtranslation)
@@ -61,7 +60,7 @@ uv pip install -e .
 ```
 
 ## MALLET Toolkit
-MALLET (Multimodal Autonomy Language and Long-Context Evaluation Toolkit) is a Python library that lets you control real-world robots using large Vision-Language Models (VLMs) and evaluate their performance. It provides a suite of tools for bridging natural language and continuous 7-DoF robot actions, built on the [Embodied Chain-of-Thought (ECoT)](https://github.com/MichalZawalski/embodied-CoT) paradigm. MALLET includes modules for language-to-action backtranslation, `AutoEval` compliant VLM and VLA servers, rate limiting and monitoring, and more.
+MALLET is a Python library that lets you control real-world robots using large Vision-Language Models (VLMs) and evaluate their performance. It provides a suite of tools for bridging natural language and continuous 7-DoF robot actions, built on the [Embodied Chain-of-Thought (ECoT)](https://github.com/MichalZawalski/embodied-CoT) paradigm. MALLET includes modules for language-to-action backtranslation, `AutoEval` compliant VLM and VLA servers, rate limiting and monitoring, and more.
 
 ### Language-to-Action Backtranslation
 The ECoT project develops a [set of primitives for translating robot actions into natural language](https://github.com/MichalZawalski/embodied-CoT/blob/main/scripts/generate_embodied_data/primitive_movements.py). The ECoT project goes on to develop synthetic, grounded chain-of-thought reasoning traces for model training. Instead, we are interested in the reverse direction: given a natural language description of an action, how can we translate it into a sequence of robot actions? We [invert the ECoT primitive movements](https://github.com/jacobphillips99/mallet/blob/main/src/mallet/utils/ecot_primitives/inverse_ecot_primitive_movements.py) to develop a language-to-action backtranslation framework for MALLET. We use VLMs to predict the direction, magnitude, and explanation for each degree of freedom in the robot's action space.
@@ -134,7 +133,7 @@ For both server types, we also develop two options: either a typical, autoscalin
 Throughout this repo and `AutoEval`, we use the [sentinel value of `-1`](https://github.com/jacobphillips99/mse-check/blob/004001deed65049cefe09b7c62ee61f129c00072/utils/server.py#L22) to indicate that a server is deployed on a cloud-based service that obscures the underlying port and removes it from the URL.
 
 #### VLM Modal Server
-The VLM Modal server wraps the `VLMPolicyServer` in a Modal app, which gets deployed as a Modal ASGI app. The Modal app is defined in [`modal_servers/vlm/vlm_modal_server.py`](https://github.com/jacobphillips99/mallet/blob/main/modal_servers/vlm/vlm_modal_server.py). At deployment-time, the Modal app is configured with the `model` parameter, which tells the `VLMPolicyServer` which remote model provider to use for API calls.
+The VLM Modal server wraps the `VLMPolicyServer` in a Modal app, which gets deployed as a Modal ASGI (Asynchronous Server Gateway Interface) app. The Modal app is defined in [`modal_servers/vlm/vlm_modal_server.py`](https://github.com/jacobphillips99/mallet/blob/main/modal_servers/vlm/vlm_modal_server.py). At deployment-time, the Modal app is configured with the `model` parameter, which tells the `VLMPolicyServer` which remote model provider to use for API calls.
 
 ```bash
 MODEL="gpt-4o-mini" modal deploy modal_servers/vlm/vlm_modal_server.py
@@ -164,13 +163,10 @@ Paul Zhou's `mse-check` is lightweight dataset of robot trajectories that can be
 Does this work? Unfortuantely, the answer right now is no. We are working on it! Below are a few examples of VLMs controlling real-world robots in the AutoEval framework.
 
 ![Gemini 2.5 Flash Open Drawer](assets/gemini_2_5_flash_open_drawer.gif)
-
-
-*Demonstration of `gemini-2.5-flash-preview-04-17` attempting the task "Open the drawer" in an AutoEval evaluation cell.*
+<p align="center"><em>Demonstration of `gemini-2.5-flash-preview-04-17` attempting the task "Open the drawer" in an AutoEval evaluation cell.</em></p>
 
 ![o4-mini Close Drawer](assets/o4_mini_close_drawer.gif)
-
-*Demonstration of `o4-mini` attempting the task "Close the drawer" in an AutoEval evaluation cell.*
+<p align="center"><em>Demonstration of `o4-mini` attempting the task "Close the drawer" in an AutoEval evaluation cell.</em></p>
 
 In both cases, the VLM understands the task and is able to make a plan, but struggles with depth perception and perspective to successfully complete the task. Models that specialize in embodied reasoning, like [`Gemini Robotics ER`](https://storage.googleapis.com/deepmind-media/gemini-robotics/gemini_robotics_report.pdf) may perform better on these setups! Since we were unable to find a model that could make progress on these tasks, we use `mse-check` to evaluate the performance of VLMs in long-context multimodal settings.
 
@@ -178,19 +174,19 @@ Using the updated `mse-check` framework, we evaluate the impact of historical im
 
 <img src="assets/best_any_way_mse.png" alt="Best MSE results for each model + OpenVLA baseline"/>
 
-*Best overall mean-squared-error (MSE) results for each VLM + OpenVLA baseline.*
+<p align="center"><em>Best overall mean-squared-error (MSE) results for each VLM + OpenVLA baseline.</em></p>
 
 Interestingly, the overall best-performing model is `claude-3-7-sonnet`, despite ranking significantly lower than the other models on other multimodal benchmarks like [MMMU](https://mmmu-benchmark.github.io/#leaderboard).
 
 <img src="assets/average_mse_by_model.png" alt="Average MSE results for each model + OpenVLA baseline"/>
 
-*Averaged mean-squared-error (MSE) results for each VLM + OpenVLA baseline.*
+<p align="center"><em>Averaged mean-squared-error (MSE) results for each VLM + OpenVLA baseline.</em></p>
 
 However, when averaging across all experiments for a given model, `gemini-2-5-pro-new` (the version released 05/06/2025) performs better than all other models. Notably, the Gemini and Claude models perform significantly better than the OpenAI models.
 
 <img src="assets/mse_facet_chart.png" alt="MSE facet chart for each model"/>
 
-*Facet chart showing the performance of each model across all history lengths and choices.*
+<p align="center"><em>Facet chart showing the performance of each model across all history lengths and choices.</em></p>
 
 We also present a representation of the performance of each model across all history lengths and choices. The face chart shows the performance of each experiment, with the axes synced across each chart. The x-axis measures `history_length`; the y-axis measures `mse`; the color of each dot represents the `history_choice` strategy; the size of each marker measures `expected_frames`, which represents the number of frames selected from the history according to the `history_choice` strategy (e.g., if `history_length=10` and `history_choice="alternating"`, then `expected_frames=5`). The dotted line represents the OpenVLA baseline with `history_length=0`.
 
@@ -198,8 +194,7 @@ Finally, we present a heatmap of the best performing history choice for each com
 
 <img src="assets/history_choice_heatmap.png" alt="Best History Choice Heatmap"/>
 
-
-*Heatmap of the best performing history choice for each combination of `history_length` and `expected_frames`.*
+<p align="center"><em>Heatmap of the best performing history choice for each combination of `history_length` and `expected_frames`.</em></p>
 
 As expected, the best performing strategy is to include as much of the history as possible, as demonstrated by the blue `all` strategy winning along the main diagonal. As you reduce the frontier of available data, the roughly best performing strategy maintains to be the strategy with the most information, stepping down through `alternating` and then `third`. Interestingly, when when the number of expected frames is 1, the best performing strategy is split between `first` and `last`, meaning that information is relevant from both ends of the history.
 
