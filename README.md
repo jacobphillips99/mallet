@@ -20,6 +20,17 @@ The MALLET repository is organized into three main directories:
 - `modal_servers`: a directory of pre-built Modal wrappers for CPU-based VLM servers and GPU-based VLA servers.
 - `mse-check`: a fork of [`mse-check`](https://github.com/zhouzypaul/mse-check) with greatly expanded capabilities for serving, evaluating, visualizing, and ablating multimodal policies with real-world data.
 
+Jump to:
+- [Installation](#installation)
+- [MALLET Toolkit](#mallet-toolkit)
+    - [Language-to-Action Backtranslation](#language-to-action-backtranslation)
+    - [VLM and VLA Servers](#vlm-and-vla-servers)
+    - [Rate Limiting and Monitoring](#rate-limiting-and-monitoring)
+- [Modal Servers](#modal-servers)
+- [mse-check](#mse-check)
+- [Evaluation](#evaluation)
+- [Acknowledgements and Citation](#acknowledgements-and-citation)
+
 ## Installation
 
 MALLET requires Python 3.10 or higher. We recommend using `uv` for fast and reliable dependency management.
@@ -182,6 +193,15 @@ However, when averaging across all experiments for a given model, `gemini-2-5-pr
 *Facet chart showing the performance of each model across all history lengths and choices.*
 
 We also present a representation of the performance of each model across all history lengths and choices. The face chart shows the performance of each experiment, with the axes synced across each chart. The x-axis measures `history_length`; the y-axis measures `mse`; the color of each dot represents the `history_choice` strategy; the size of each marker measures `expected_frames`, which represents the number of frames selected from the history according to the `history_choice` strategy (e.g., if `history_length=10` and `history_choice="alternating"`, then `expected_frames=5`). The dotted line represents the OpenVLA baseline with `history_length=0`.
+
+Finally, we present a heatmap of the best performing history choice for each combination of `history_length` and `expected_frames`. The heatmap shows the best performing history choice for each combination of `history_length` and `expected_frames`, with the color representing the `history_choice` strategy.
+
+<img src="assets/history_choice_heatmap.png" alt="Best History Choice Heatmap"/>
+
+
+*Heatmap of the best performing history choice for each combination of `history_length` and `expected_frames`.*
+
+As expected, the best performing strategy is to include as much of the history as possible, as demonstrated by the blue `all` strategy winning along the main diagonal. As you reduce the frontier of available data, the roughly best performing strategy maintains to be the strategy with the most information, stepping down through `alternating` and then `third`. Interestingly, when when the number of expected frames is 1, the best performing strategy is split between `first` and `last`, meaning that information is relevant from both ends of the history.
 
 
 
