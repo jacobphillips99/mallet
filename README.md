@@ -31,7 +31,8 @@ We use MALLET to evaluate the performance of VLMs on controlling real-world robo
 - [Acknowledgements and Citation](#acknowledgements-and-citation)
 
 ## Installation
-
+<details>
+<summary>Click to expand</summary>
 MALLET requires Python 3.10 or higher. We recommend using `uv` for fast and reliable dependency management.
 
 1. Install `uv` if you haven't already:
@@ -58,6 +59,8 @@ source .venv/bin/activate  # On Unix/macOS
 uv pip install -r requirements.txt
 uv pip install -e .
 ```
+</details>
+
 
 ## MALLET Toolkit
 MALLET is a Python library that lets you control real-world robots using large Vision-Language Models (VLMs) and evaluate their performance. It provides a suite of tools for bridging natural language and continuous 7-DoF robot actions, built on the [Embodied Chain-of-Thought (ECoT)](https://github.com/MichalZawalski/embodied-CoT) paradigm. MALLET includes modules for language-to-action backtranslation, `AutoEval` compliant VLM and VLA servers, rate limiting and monitoring, and more.
