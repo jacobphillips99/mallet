@@ -182,3 +182,4 @@ cython_debug/
 
 # ignore the mse-check bridge trajectories
 assets/bridge_v2_10_trajs.npy
+.vscode/
