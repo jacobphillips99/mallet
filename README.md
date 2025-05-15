@@ -63,7 +63,7 @@ uv pip install -e .
 
 
 ## MALLET Toolkit
-MALLET is a Python library that lets you control real-world robots using large Vision-Language Models (VLMs) and evaluate their performance. It provides a suite of tools for bridging natural language and continuous 7-DoF robot actions, built on the [Embodied Chain-of-Thought (ECoT)](https://github.com/MichalZawalski/embodied-CoT) paradigm. MALLET includes modules for language-to-action backtranslation, `AutoEval` compliant VLM and VLA servers, rate limiting and monitoring, and more.
+MALLET is a Python library that lets you control real-world robots using large Vision-Language Models (VLMs) and evaluate their performance. It provides a suite of tools for bridging natural language and continuous 7-DoF robot actions, built on the [Embodied Chain-of-Thought (ECoT)](https://github.com/MichalZawalski/embodied-CoT) paradigm. MALLET includes modules for language-to-action backtranslation, `AutoEval` compliant VLM and VLA servers, rate limiting and monitoring, and more. 
 
 ### Language-to-Action Backtranslation
 The ECoT project develops a [set of primitives for translating robot actions into natural language](https://github.com/MichalZawalski/embodied-CoT/blob/main/scripts/generate_embodied_data/primitive_movements.py). The ECoT project goes on to develop synthetic, grounded chain-of-thought reasoning traces for model training. Instead, we are interested in the reverse direction: given a natural language description of an action, how can we translate it into a sequence of robot actions? We [invert the ECoT primitive movements](https://github.com/jacobphillips99/mallet/blob/main/src/mallet/utils/ecot_primitives/inverse_ecot_primitive_movements.py) to develop a language-to-action backtranslation framework for MALLET. We use VLMs to predict the direction, magnitude, and explanation for each degree of freedom in the robot's action space.
@@ -117,6 +117,12 @@ from mallet.servers.server import VLMPolicyServer
 
 server = VLMPolicyServer(model="gpt-4o-mini", history_length=10, history_choice="all")
 server.run(host="0.0.0.0", port=8000)
+```
+
+or equivalently,
+
+```bash
+python src/mallet/servers/server.py --model gpt-4o-mini --history_length 10 --history_choice all
 ```
 
 This spins up a FastAPI server on the localhost that can be hit with a payload of an image and instruction. Upon hitting the `/act` endpoint, the VLM object sends a remote API request to the model (in this case, `gpt-4o-mini`) and then translates the natural language into a continous robot action. The VLMPolicyServer also enables history, which can be used to record and use historical requests and responses. The server can be instructed to internally record and use historical inputs and outputs or to accept a `history_dict` parameter to use external history sent from the client. History is controlled via two parameters: `history_length` and `history_choice`. `history_length` controls how many steps of history to keep in the server's memory and must be a positive integer; we ablate over `[1, 2, 4, 8, 10, 16, 32]` steps. `history_choice` controls which steps of history to use for context in the prompt; we ablate over `[first, last, alternate, third, all]` strategies, which describe selecting the first, last, every other, every third, or all steps of history. When history length is set to 0, the history choice is `None`; when history length is set to 1, the history choice is `one` as all methods result in the same choice.
@@ -200,6 +206,23 @@ Finally, we present a heatmap of the best performing history choice for each com
 <p align="center"><em>Heatmap of the best performing history choice for each combination of `history_length` and `expected_frames`.</em></p>
 
 As expected, the best performing strategy is to include as much of the history as possible, as demonstrated by the blue `all` strategy winning along the main diagonal. As you reduce the frontier of available data, the roughly best performing strategy continues to be the strategy with the most information, stepping down through `alternating` and then `third`. Interestingly, when when the number of expected frames is 1, the best performing strategy is split between `first` and `last`, meaning that information is relevant from both ends of the history.
+
+### Running the Evaluation
+First, setup a policy server following the instructions above - this can be a local server or a remote server deployed with Modal. Note the host and port of the server. You can run evaluation over a single set of parameters with the following command:
+
+```bash
+python mse_check/test_policy_client_mse.py --host <host> --port <port> --model <model> --history_length <history_length> --history_choice <history_choice>
+```
+
+or run a sweep over a range of parameters with the following command:
+
+```bash
+python mse_check/sweep_test.py
+```
+
+
+
+
 
 
 
