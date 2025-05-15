@@ -9,7 +9,7 @@ DEFAULT_TIMEOUT = 30 * 60 * 4
 
 def get_vlm_modal_image(**env_kwargs: Any) -> modal.Image:
     return (
-        modal.Image.debian_slim()
+        modal.Image.debian_slim(python_version="3.10")
         .pip_install(
             "uvicorn",
             "fastapi",
@@ -23,19 +23,10 @@ def get_vlm_modal_image(**env_kwargs: Any) -> modal.Image:
             "asyncio",
             "json-numpy",
         )
-        .env(env_kwargs)
+        .env({k: v for k, v in env_kwargs.items() if v is not None})
         # Install the local package
         .add_local_python_source("mallet")
         .add_local_python_source("modal_servers")
-        # Copy necessary files
-        .add_local_file(
-            "mallet/utils/ecot_primitives/action_bounds.json",
-            "/root/mallet/utils/ecot_primitives/action_bounds.json",
-        )
-        .add_local_file(
-            "mallet/config/rate_limits.yaml",
-            "/root/mallet/config/rate_limits.yaml",
-        )
     )
 
 

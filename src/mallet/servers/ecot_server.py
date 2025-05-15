@@ -168,6 +168,7 @@ class ECOTServer:
 
             image, instruction = payload["image"], payload["instruction"]
             unnorm_key = payload.get("unnorm_key", "bridge_orig")
+            image = np.array(image).astype(np.uint8)
 
             # Run VLA Inference
             prompt = get_openvla_prompt(instruction, self.ecot_path)
@@ -176,11 +177,12 @@ class ECOTServer:
                     self.device, dtype=torch.bfloat16
                 )
             except Exception as e:
-                raise HTTPException(status_code=400, detail=f"Error processing image: {str(e)}")
+                raise HTTPException(status_code=400, detail=f"Error processing image: {str(e)}; {traceback.format_exc()}")
 
             action, generated_ids = self.vla.predict_action(
                 **inputs, unnorm_key=unnorm_key, do_sample=False, max_new_tokens=1024
             )
+            action = list(action)
             if double_encode:
                 return JSONResponse(json_numpy.dumps(action))
             else:

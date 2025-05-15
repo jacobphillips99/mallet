@@ -1,5 +1,14 @@
 """
-MODEL="gpt-4o" modal deploy modal_server.py
+
+Deploy the VLM Policy Server Modal app.
+
+Usage:
+
+```bash
+MODEL="gpt-4o-mini" modal deploy modal_servers/vlm/vlm_modal_server.py
+```
+
+This will print out the Modal URL; should look like `Created web function fastapi_app => https://your-name-here.modal.run`.
 """
 
 import os

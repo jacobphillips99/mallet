@@ -27,6 +27,14 @@ See the main [README](https://github.com/jacobphillips99/mallet/blob/main/README
  modal deploy modal_servers/vla/vla_modal_server.py
  ```
 
+ This will create a Modal web function along a url; it should look like 
+
+ ```bash
+ Created web function fastapi_app => https://your-name-here.modal.run
+ ```
+
+ Use this link as the `host` and port `-1`.
+
  To expose the service with a port via Modal tunnels:
  ```bash
  modal run modal_servers/vla/vla_modal_server_with_tunnel.py

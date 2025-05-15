@@ -5,7 +5,7 @@ import modal
 HF_CACHE_VOL = modal.Volume.from_name("hf-cache", create_if_missing=True)
 HF_CACHE_PATH = "/cache"
 
-DEFAULT_CONCURRENCY = 1  # for testing
+DEFAULT_CONCURRENCY = 1
 DEFAULT_GPU = "A10G"
 DEFAULT_TIMEOUT = 30 * 60
 
@@ -42,7 +42,7 @@ GET_VLA_FUNCTIONS = {
 }
 
 image = (
-    modal.Image.debian_slim()
+    modal.Image.debian_slim(python_version="3.10")
     .apt_install("git", "python3-opencv")
     .env(
         {

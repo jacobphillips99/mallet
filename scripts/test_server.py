@@ -1,11 +1,14 @@
 """
 Simple test script to validate the VLM Policy Server.
 
+Can make requests to a local server or a remote server via Modal.
+
 Conforms to the `AutoEval` format for robot policy evaluation, which means
 accepting a payload on /act and returning a 7-unit action vector.
 """
 
 from dataclasses import dataclass
+import traceback
 from typing import Any
 
 import draccus
@@ -20,7 +23,6 @@ def get_url(host: str, port: int, endpoint: str | None = None, protocol: str = "
     Get the URL for a given host and port; if port is negative, skip it.
     Cleans the host and endpoint strings
     """
-    # Remove http:// or https:// from host if present
     host_str = host.replace("http://", "").replace("https://", "")
     port_str = f":{port}" if int(port) >= 0 else ""
     endpoint_str = f"/{endpoint.lstrip('/')}" if endpoint else ""
@@ -28,7 +30,8 @@ def get_url(host: str, port: int, endpoint: str | None = None, protocol: str = "
 
 def submit_request(url: str, payload: dict[str, Any]) -> bool:
     try:
-        print(f"Sending request with instruction: '{payload['instruction']}'")
+        print("=" * 50)
+        print(f"Sending {payload.get('test', '')} request with instruction: '{payload['instruction']}'")
         response = requests.post(
             url,
             json=payload,
@@ -54,7 +57,7 @@ def submit_request(url: str, payload: dict[str, Any]) -> bool:
         print("Make sure the server is running and accessible.")
         return False
     except Exception as e:
-        print(f"Error: {str(e)}")
+        print(f"Error: {str(e)}; {traceback.format_exc()}")
         return False
 
 
@@ -62,6 +65,7 @@ def test_server(
     task: str,
     host: str,
     port: int,
+    test: bool,
 ) -> bool:
     """Test the server with a simple request."""
     url = get_url(host, port, "/act")
@@ -79,11 +83,12 @@ def test_server(
         "instruction": instruction,
         "proprio": proprio,
     }
-    test_payload = {
-        "test": True,
-        **payload,
-    }
-    submit_request(url, test_payload)
+    if test:
+        test_payload = {
+            "test": True,
+            **payload,
+        }
+        submit_request(url, test_payload)
     submit_request(url, payload)
 
 def test_health(host: str, port: int) -> bool:
@@ -100,7 +105,7 @@ def test_health(host: str, port: int) -> bool:
             print(f"Health check failed with status code {response.status_code}")
             return False
     except Exception as e:
-        print(f"Health check error: {str(e)}")
+        print(f"Health check error: {str(e)}; {traceback.format_exc()}")
         return False
 
 
@@ -112,6 +117,7 @@ class TestConfig:
     # port: int = -1  # Server port for remote testing
     task: str = "eggplant_in_blue_sink" 
     health_check: bool = True
+    test_check: bool = True # note that VLA servers do not support test requests
 
 
 @draccus.wrap()
@@ -133,7 +139,7 @@ def run_tests(cfg: TestConfig) -> None:
         print("\n" + "=" * 50 + "\n")
 
     # Test action endpoint
-    test_server(cfg.task, cfg.host, cfg.port)
+    test_server(cfg.task, cfg.host, cfg.port, cfg.test_check)
 
     print("\n" + "=" * 50)
     print("Tests completed!")

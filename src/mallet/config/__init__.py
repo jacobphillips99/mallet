@@ -2,6 +2,7 @@
 
 import logging
 import os
+import traceback
 from typing import Any
 
 import yaml
@@ -19,7 +20,7 @@ def load_yaml_config(file_path: str) -> dict[str, Any]:
         logger.debug(f"Loaded config from {file_path}")
         return config or {}
     except Exception as e:
-        logger.warning(f"Error loading config from {file_path}: {str(e)}")
+        logger.warning(f"Error loading config from {file_path}: {str(e)}; {traceback.format_exc()}")
         return {}
 
 

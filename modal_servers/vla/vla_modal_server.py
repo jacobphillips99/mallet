@@ -1,3 +1,15 @@
+"""
+Deploy the VLA Policy Server Modal app.
+
+Usage:
+
+```bash
+MODEL="openvla" modal deploy modal_servers/vla/vla_modal_server.py
+```
+
+This will print out the Modal URL; should look like `Created web function fastapi_app => https://your-name-here.modal.run`.
+"""
+
 import os
 
 import modal
@@ -14,7 +26,7 @@ from modal_servers.vla import (
     image,
 )
 
-MODEL = os.environ.get("VLA_MODEL", "openvla")
+MODEL = os.environ.get("MODEL", "openvla")
 APP_NAME = VLA_MODEL_PATHS[MODEL].split("/")[-1].replace("-", "_").replace(".", "_")
 app = modal.App(
     name=APP_NAME,

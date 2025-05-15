@@ -1,3 +1,15 @@
+"""
+Deploy the VLA Policy Server Modal app with a tunnel.
+
+Usage:
+
+```bash
+MODEL="openvla" modal run modal_servers/vla/vla_modal_server_with_tunnel.py
+```
+
+This will print our the host and tunnel; should look like `xxx.modal.host:yyyyy`.
+Note we use `modal run` in order to manually spin up and tear down the server.
+"""
 import os
 
 import modal

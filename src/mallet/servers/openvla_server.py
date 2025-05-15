@@ -12,7 +12,7 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, Union
-
+import numpy as np 
 # ruff: noqa: E402
 import json_numpy
 import torch
@@ -95,6 +95,7 @@ class OpenVLAServer:
 
             image, instruction = payload["image"], payload["instruction"]
             unnorm_key = payload.get("unnorm_key", "bridge_orig")
+            image = np.array(image).astype(np.uint8)
 
             # Run VLA Inference
             prompt = get_openvla_prompt(instruction, self.openvla_path)
@@ -103,9 +104,10 @@ class OpenVLAServer:
                     self.device, dtype=torch.bfloat16
                 )
             except Exception as e:
-                raise HTTPException(status_code=400, detail=f"Error processing image: {str(e)}")
+                raise HTTPException(status_code=400, detail=f"Error processing image: {str(e)}; {traceback.format_exc()}")
 
             action = self.vla.predict_action(**inputs, unnorm_key=unnorm_key, do_sample=False)
+            action = list(action)
             if double_encode:
                 return JSONResponse(json_numpy.dumps(action))
             else:
