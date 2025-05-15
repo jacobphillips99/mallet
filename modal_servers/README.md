@@ -27,7 +27,7 @@ See the main [README](https://github.com/jacobphillips99/mallet/blob/main/README
  modal deploy modal_servers/vla/vla_modal_server.py
  ```
 
- This will create a Modal web function along a url; it should look like 
+ This will create a Modal web function along a URL; it should look like 
 
  ```bash
  Created web function fastapi_app => https://your-name-here.modal.run
@@ -44,7 +44,6 @@ See the main [README](https://github.com/jacobphillips99/mallet/blob/main/README
  ### Deploying the VLM Server
 
  ```bash
- # (Optional) Set a custom model
 MODEL="your-vlm-model-name" modal deploy modal_servers/vlm/vlm_modal_server.py
  ```
 
