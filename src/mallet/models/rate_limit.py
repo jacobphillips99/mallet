@@ -133,6 +133,7 @@ class RateLimit:
 
         # Start monitoring if enabled and not already started
         self._ensure_monitor_started()
+        logger.info(f"Registered model {provider}/{model} with rate limit config {config}")
 
     def get_config(self, provider: str, model: str) -> Optional[ModelRateLimitConfig]:
         """Get the rate limit configuration for a provider/model.

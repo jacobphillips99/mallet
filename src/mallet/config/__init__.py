@@ -30,18 +30,20 @@ def get_config_path(filename: str) -> str | None:
     # Check in current directory
     if os.path.exists(filename):
         return filename
-
+    # Check in mallet/config directory
+    elif os.path.exists(os.path.join(os.path.dirname(__file__), filename)):
+        return os.path.join(os.path.dirname(__file__), filename)
     return None
 
 
-def load_rate_limits() -> RateLimitConfig:
+def load_rate_limits(filename: str = "rate_limits.yaml") -> RateLimitConfig:
     """Load rate limits from YAML configuration.
 
     Returns:
         A RateLimitConfig object containing rate limits for all providers and models.
         If no config file is found, returns an empty config.
     """
-    config_path = get_config_path("rate_limits.yaml")
+    config_path = get_config_path(filename)
     if config_path:
         yaml_data = load_yaml_config(config_path)
         # Convert the flat structure to our nested structure

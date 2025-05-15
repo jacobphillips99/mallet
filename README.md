@@ -40,7 +40,7 @@ MALLET requires Python 3.10 or higher. We recommend using `uv` for fast and reli
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-2. Clone the repository and its submodules:
+2. Clone the repository and its submodules (including the `mse-check` fork):
 ```bash
 git clone --recursive https://github.com/jacobphillips99/mallet.git
 cd mallet
@@ -166,7 +166,7 @@ modal run modal_servers/vla/vla_modal_server_with_tunnel.py
 Note that GPU-based Modal servers have a longer spin-up time than CPU-based servers as they must download and cache model weights. It is reccomended to send a test request or to "warm" a pod before using the server in a performance-critical application such as `AutoEval`.
 
 ## mse-check
-Paul Zhou's `mse-check` is lightweight dataset of robot trajectories that can be used to evaluate the performance of multimodal policies. The framework was originally designed as a simple check that policies for AutoEval are working as expected, but `mallet` extends it to testing general VLM performance across a variety of variables. We develop a testing framework that allows us to ablate prompt, history, and inference time-cost tradeoffs, and to test the performance of VLMs in long-context multimodal settings. We extend `mse-check` to support parallel, asynchronous policy evaluation, local or remote execution, and develop sophisticated tools for visualizing and analyzing policy performance, including a hyperparameter sweep tool. See the main test script at [`mse-check/test_policy_client_mse.py`](https://github.com/jacobphillips99/mallet/blob/main/mse-check/test_policy_client_mse.py), the sweep tool at [`mse-check/sweep_test.py`](https://github.com/jacobphillips99/mse-check/blob/main/sweep_test.py), or visualization notebook at [`mse-check/compare_models.ipynb`](https://github.com/jacobphillips99/mse-check/blob/main/compare_models.ipynb).
+Paul Zhou's `mse-check` is lightweight dataset of robot trajectories that can be used to evaluate the performance of multimodal policies. The framework was originally designed as a simple check that policies for AutoEval are working as expected, but `mallet` extends it to testing general VLM performance across a variety of variables. We develop a testing framework that allows us to ablate prompt, history, and inference time-cost tradeoffs, and to test the performance of VLMs in long-context multimodal settings. We extend `mse-check` to support parallel, asynchronous policy evaluation, local or remote execution, and develop sophisticated tools for visualizing and analyzing policy performance, including a hyperparameter sweep tool. See the main test script at [`mse-check/eval.py`](https://github.com/jacobphillips99/mallet/blob/main/mse-check/eval.py), the sweep tool at [`mse-check/sweep.py`](https://github.com/jacobphillips99/mallet/blob/main/mse-check/sweep.py), or visualization notebook at [`mse-check/compare_models.ipynb`](https://github.com/jacobphillips99/mallet/blob/main/mse-check/compare_models.ipynb).
 
 ## Evaluation
 Does this work? Unfortuantely, the answer right now is no. We are working on it! Below are a few examples of VLMs controlling real-world robots in the AutoEval framework.
@@ -211,19 +211,16 @@ As expected, the best performing strategy is to include as much of the history a
 First, setup a policy server following the instructions above - this can be a local server or a remote server deployed with Modal. Note the host and port of the server. You can run evaluation over a single set of parameters with the following command:
 
 ```bash
-python mse_check/test_policy_client_mse.py --host <host> --port <port> --model <model> --history_length <history_length> --history_choice <history_choice>
+python mse_check/eval.py --host <host> --port <port> --model <model> --history_length <history_length> --history_choice <history_choice>
 ```
 
 or run a sweep over a range of parameters with the following command:
 
 ```bash
-python mse_check/sweep_test.py
+python mse_check/sweep.py --host <host> --port <port> --model <model> --n_iters <n_iters>
 ```
 
-
-
-
-
+See the [`mse-check` README](https://github.com/jacobphillips99/mse-check/tree/main) for more details.
 
 
 ## Acknowledgements and Citation

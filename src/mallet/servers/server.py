@@ -49,10 +49,7 @@ from mallet.utils.ecot_primitives.inverse_ecot_primitive_movements import text_t
 from mallet.utils.robot_utils import GRIPPER_INDEX, GRIPPER_OPEN_THRESHOLD, get_gripper_position
 
 json_numpy.patch()
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+
 logger = logging.getLogger(__name__)
 
 
@@ -260,7 +257,7 @@ class VLMPolicyServer:
             )
 
             if instruction == "test connection":
-                # short-circuit the VLM call for testing purposes; should help with latency on test_policy_server
+                # short-circuit the VLM call for testing purposes; should help with latency on AutoEval server
                 return JSONResponse(content=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
             response = await self.vlm.generate(vlm_request)

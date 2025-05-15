@@ -1,3 +1,17 @@
+"""
+Simple test script to validate the VLM class covering parallelism, vision inputs, and history.
+
+Makes four requests, demonstrating parallism over two tasks:
+1. A simple text-only request
+2. An interleaved vision request with history
+
+Uses the `AutoEval` goal images and task instructions for the vision test. 
+The AutoEval setups are reflexive, so we can use the goal image of the opposite task and the "history" for the chosen task.
+
+For example, for the task "eggplant_in_blue_sink", the goal image is the eggplant in the blue sink.
+The opposite task, "eggplant_in_yellow_basket", provides the "starting state" or "history" for the chosen task.
+"""
+
 import asyncio
 import base64
 import copy
@@ -16,18 +30,13 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TestConfig:
-    # VLM Configuration
     model: str = "gpt-4o-mini"
     task: str = "eggplant_in_blue_sink"
-    parallel_requests: int = 1
+    parallel_requests: int = 2
     include_history: bool = True
 
 
-async def test_vlm(cfg: TestConfig) -> None:
-    # Initialize VLM
-    vlm = VLM()
-
-    # Test 1: Simple text request
+async def simple_text_request(cfg: TestConfig, vlm: VLM) -> None:
     text_request = VLMRequest(
         vlm_input=VLMInput(
             prompt="What is 2+2?",
@@ -38,13 +47,11 @@ async def test_vlm(cfg: TestConfig) -> None:
     print("\n=== Testing text-only request ===")
     try:
         response = await vlm.generate(text_request)
-        print(f"Model: {response.model}")
-        print(f"Response: {response.text}")
-        print(f"Response time: {response.response_ms}ms")
-        print(f"Token usage: {response.usage}")
+        print(f"Model: {response.model}, Response: {response.text}, Response time: {response.response_ms}ms, Token usage: {response.usage}")
     except Exception as e:
         print(f"Text request failed: {e}")
 
+def construct_complex_inputs(cfg: TestConfig) -> tuple[str, bytes, VLMHistory | None]:
     task = cfg.task
     history_image_path = Path(AUTO_EVAL_TEST_UTILS[task]["start_image"])
     image_path = Path(AUTO_EVAL_TEST_UTILS[task]["goal_image"])
@@ -78,10 +85,18 @@ async def test_vlm(cfg: TestConfig) -> None:
         )
     else:
         history = None
+    return task_instructions, image_data, history
 
-    vision_request = VLMRequest(
+def setup_complex_request(cfg: TestConfig) -> VLMRequest:
+    task_instructions, image_data, history = construct_complex_inputs(cfg)
+    prompt = f"""
+    The image below shows the end state of the scene. What actions would the robot have to take to reach this end state?
+    The task instructions are: {task_instructions}
+    """.strip()
+
+    complex_request = VLMRequest(
         vlm_input=VLMInput(
-            prompt=f"The image below shows the end state of the scene. What actions would the robot have to take to reach this end state? The task instructions are: {task_instructions}",
+            prompt=prompt,
             images=[
                 ImageInput(data=base64.b64encode(image_data).decode("utf-8"), mime_type="image/png")
             ],
@@ -89,8 +104,11 @@ async def test_vlm(cfg: TestConfig) -> None:
         model=cfg.model,
         history=history,
     )
+    return complex_request
 
-    many_vision_requests = [copy.deepcopy(vision_request) for _ in range(cfg.parallel_requests)]
+async def complex_request(cfg: TestConfig, vlm: VLM) -> None:
+    complex_request = setup_complex_request(cfg)
+    many_vision_requests = [copy.deepcopy(complex_request) for _ in range(cfg.parallel_requests)]
     for i, req in enumerate(many_vision_requests):
         req.vlm_input.prompt += f" ({i})"
 
@@ -100,25 +118,21 @@ async def test_vlm(cfg: TestConfig) -> None:
         try:
             if maybe_response is not None:
                 response = maybe_response
-                print(f"Response {i}:")
-                print(f"Model: {response.model}")
-                print(f"Response: {response.text}")
-                print(f"Response time: {response.response_ms}ms")
-                print(f"Token usage: {response.usage}")
+                print(f"Response {i}:, Model: {response.model}, Response: {response.text}, Response time: {response.response_ms}ms, Token usage: {response.usage}")
             else:
                 print(f"Vision request {i} failed: {maybe_exception}")
         except Exception as e:
             logger.error(f"Vision request {i} failed: {e}; traceback: {traceback.format_exc()}")
 
 
+async def test_vlm(cfg: TestConfig) -> None:
+    vlm = VLM()
+    await simple_text_request(cfg, vlm)
+    await complex_request(cfg, vlm)
+
+
 @draccus.wrap()
 def run_tests(cfg: TestConfig) -> None:
-    """
-    Run VLM tests with the specified configuration
-
-    Args:
-        cfg: Test configuration
-    """
     asyncio.run(test_vlm(cfg))
 
 

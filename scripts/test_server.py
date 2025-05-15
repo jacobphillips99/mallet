@@ -1,7 +1,12 @@
-#!/usr/bin/env python3
-"""Test client for VLM AutoEval Robot Benchmark server."""
+"""
+Simple test script to validate the VLM Policy Server.
+
+Conforms to the `AutoEval` format for robot policy evaluation, which means
+accepting a payload on /act and returning a 7-unit action vector.
+"""
 
 from dataclasses import dataclass
+from typing import Any
 
 import draccus
 import numpy as np
@@ -21,45 +26,23 @@ def get_url(host: str, port: int, endpoint: str | None = None, protocol: str = "
     endpoint_str = f"/{endpoint.lstrip('/')}" if endpoint else ""
     return f"{protocol}{host_str}{port_str}{endpoint_str}"
 
-
-def test_server(
-    task: str,
-    host: str,
-    port: int,
-) -> bool:
-    """Test the server with a simple request."""
-    url = get_url(host, port, "/act")
-    print(f"Testing server at {url}")
-
-    # Generate test image and proprioceptive data
-    image = np.array(Image.open(AUTO_EVAL_TEST_UTILS[task]["start_image"]))
-    proprio = np.random.rand(7).tolist()
-    proprio[-1] = 1  # gripper is open
-    instruction = AUTO_EVAL_TEST_UTILS[task]["task_instruction"]
-
-    # Create payload
-    payload = {
-        "image": image.tolist(),  # Convert to list for JSON serialization
-        "instruction": instruction,
-        "proprio": proprio,
-        "test": True,
-    }
-
-    # Send request
+def submit_request(url: str, payload: dict[str, Any]) -> bool:
     try:
-        print(f"Sending request with instruction: '{instruction}'")
+        print(f"Sending request with instruction: '{payload['instruction']}'")
         response = requests.post(
             url,
             json=payload,
             headers={"Content-Type": "application/json"},
         )
 
-        # Check response
         if response.status_code == 200:
             result = response.json()
             print("\nServer Response:")
-            print(f"Action: {result.get('action')}")
-            print(f"VLM Response: {result.get('vlm_response')}")
+            if payload.get("test"):
+                print(f"Action: {result.get('action')}")
+                print(f"VLM Response: {result.get('vlm_response')}")
+            else:
+                print(result)
             return True
         else:
             print(f"Error: Server returned status code {response.status_code}")
@@ -74,6 +57,34 @@ def test_server(
         print(f"Error: {str(e)}")
         return False
 
+
+def test_server(
+    task: str,
+    host: str,
+    port: int,
+) -> bool:
+    """Test the server with a simple request."""
+    url = get_url(host, port, "/act")
+    print(f"Testing server at {url}")
+
+    # Generate test image and proprioceptive data
+    image = np.array(Image.open(AUTO_EVAL_TEST_UTILS[task]["start_image"]))
+    proprio = np.random.rand(7).tolist()
+    proprio[-1] = 1  # set gripper to open
+    instruction = AUTO_EVAL_TEST_UTILS[task]["task_instruction"]
+
+    # Create payload
+    payload = {
+        "image": image.tolist(), 
+        "instruction": instruction,
+        "proprio": proprio,
+    }
+    test_payload = {
+        "test": True,
+        **payload,
+    }
+    submit_request(url, test_payload)
+    submit_request(url, payload)
 
 def test_health(host: str, port: int) -> bool:
     """Test the health endpoint."""
@@ -95,16 +106,12 @@ def test_health(host: str, port: int) -> bool:
 
 @dataclass
 class TestConfig:
-    # Server Configuration
-    # local testing
-    # host: str = "localhost"  # Server host
-    # port: int = 8000  # Server port for local testing
-    # remote testing
-    # removing "s" for test --> seems to work!
-    host: str = "jacobphillips99--vlm-robot-policy-server-fastapi-app.modal.run"
-    port: int = -1  # Server port for remote testing
-    task: str = "eggplant_in_blue_sink"  # Task to test
-    health_check: bool = False  # Whether to run health check
+    host: str = "localhost"
+    port: int = 8000
+    # host: str = "your-app.modal.run"
+    # port: int = -1  # Server port for remote testing
+    task: str = "eggplant_in_blue_sink" 
+    health_check: bool = True
 
 
 @draccus.wrap()
