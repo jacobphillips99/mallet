@@ -11,7 +11,7 @@ Created by [Jacob Phillips](https://jacobdphillips.com/)
 
 MALLET (Multimodal Autonomy Language and Long-Context Evaluation Toolkit) is an open-source (Apache 2.0) toolkit for controlling real-world robots with cloud-hosted vision-language models (VLMs), as well as a suite of tools for evaluating the capabilities of VLMs in long-context multimodal settings. MALLET is built on top of [Paul Zhou's](https://github.com/zhouzypaul) [AutoEval](https://github.com/zhouzypaul/auto_eval) and [mse-check](https://github.com/zhouzypaul/mse-check), which allows us to submit action commands to real-world robots and evaluate offline policies.
 
-MALLET provides a toolkit for researchers to conduct GPU-heavy real-world robotics research *without* having to purchase robots or GPUs! We build several capabilities for researchers to build and evaluate multimodal agents that can operate in the real world. We also provide code to run vision-language-action (VLA) models in the cloud.
+**MALLET provides a toolkit for researchers to conduct GPU-heavy real-world robotics research *without* having to purchase robots or GPUs!** We build several capabilities for researchers to build and evaluate multimodal agents that can operate in the real world. We also provide code to run vision-language-action (VLA) models in the cloud on serverless compute.
 
 MALLET makes two large contributions to the robotics community:
 1. MALLET presents a framework on top of [Embodied Chain of Thought (ECoT)](https://github.com/MichalZawalski/embodied-CoT) for translating between natural language and continuous, 7 degree-of-freedom (DoF) robot actions, which enables VLMs to directly control real-world robots.
@@ -25,6 +25,7 @@ We use MALLET to evaluate the performance of VLMs on controlling real-world robo
     - [Language-to-Action Backtranslation](#language-to-action-backtranslation)
     - [VLM and VLA Servers](#vlm-and-vla-servers)
     - [Rate Limiting and Monitoring](#rate-limiting-and-monitoring)
+    - [Using MALLET with AutoEval](#using-mallet-with-autoeval)
 - [Modal Servers](#modal-servers)
 - [mse-check](#mse-check)
 - [Evaluation](#evaluation)
@@ -132,6 +133,9 @@ We also provide compatible forks of servers for OpenVLA (from [AutoEval](https:/
 
 ### Rate Limiting and Monitoring
 To safely scale and handle API usage, MALLET includes a real-time outbound request rate-limiter. Users can define per-provider and per-model limits (such as requests/min, tokens/min, and number of concurrent requests) to prevent unexpected rate-limiting by model providers. The [`rate_limits.yaml`](https://github.com/jacobphillips99/mallet/blob/main/src/mallet/config/rate_limits.yaml) contains the configuration for the rate limiter, which is loaded into the singular [`RateLimit`](https://github.com/jacobphillips99/mallet/blob/main/src/mallet/models/rate_limit.py)object. The RateLimit object is passed to each VLM object in order to limit the rate of outbound requests. The RateLimit object tracks usage statistics and even provides a CLI tool to view rate limit activity in real-time. See [rate_limit_cli.py](https://github.com/jacobphillips99/mallet/blob/main/src/mallet/models/rate_limit_cli.py) for the `curses` based UI tool showing each mode's request rate and token consumption live.
+
+### Using MALLET with AutoEval
+To use MALLET and evaluate a VLM on a real-world robot, you should first deploy a VLMPolicyServer to Modal using the instructions above. Next, go to the [AutoEval dashboard](http://159.223.171.199:46569/page/) and create a new job. Input the job description, choose a robot and task, and then submit your policy server URL (drop the leading `http://`). Input your port (if using the `tunnel` approach) or choose `-1` for no port (for the default behavior). Submit the job and wait for it to begin! If you're deploying a VLA server, you can use `keep_alive.py` to warm the node before the job begins. During job submission, the AutoEval server automatically sends a test request, so the node needs to be warm beforehand or within 10 seconds of the job submission.
 
 ## Modal Servers
 
