@@ -381,7 +381,7 @@ class VLMPolicyServer:
             host=host,
             port=port,
             timeout_keep_alive=120,
-            limit_concurrency=None,  # Remove concurrency limit entirely
+            limit_concurrency=None,  # Remove concurrency limit entirely; rate limiter handles this
         )
         server = uvicorn.Server(config)
 

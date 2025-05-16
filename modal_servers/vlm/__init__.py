@@ -3,7 +3,7 @@ from typing import Any
 import modal
 
 DEFAULT_MODEL = "gemini/gemini-2.5-pro-preview-03-25"
-DEFAULT_CONCURRENCY = 20
+DEFAULT_CONCURRENCY = 1  # the VLMPolicyServer uses a rate limiter to handle concurrency
 DEFAULT_TIMEOUT = 30 * 60 * 4
 
 

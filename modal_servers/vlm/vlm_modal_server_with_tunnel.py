@@ -9,6 +9,8 @@ MODEL="gpt-4o" modal run modal_servers/vlm/vlm_modal_server_with_tunnel.py
 
 This will print our the host and tunnel; should look like `xxx.modal.host:yyyyy`.
 Note we use `modal run` in order to manually spin up and tear down the server.
+
+Also, note that the tunnel server is single-container, so "sequential" evaluation must be used.
 """
 
 import os
@@ -17,7 +19,6 @@ import modal
 
 from mallet.servers.server import VLMPolicyServer
 from modal_servers.vlm import (
-    DEFAULT_CONCURRENCY,
     DEFAULT_MODEL,
     DEFAULT_TIMEOUT,
     get_vlm_modal_image,
@@ -51,7 +52,7 @@ app = modal.App(
 
 
 @app.function(
-    max_containers=DEFAULT_CONCURRENCY,  # this breaks the rate limits, but fine for now
+    max_containers=1,  # tunnel server is single-container
     timeout=DEFAULT_TIMEOUT,
 )
 def serve_vlm_tunnel() -> None:

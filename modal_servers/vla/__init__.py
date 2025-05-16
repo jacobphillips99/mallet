@@ -31,6 +31,7 @@ def get_openvla_server(openvla_path: str = DEFAULT_OPENVLA_PATH) -> Any:
 
 
 def get_ecot_server(ecot_path: str = DEFAULT_ECOT_PATH) -> Any:
+    # import here to protect local dev environment from OpenVLA requirements
     from mallet.servers.ecot_server import ECOTServer
 
     server = ECOTServer(ecot_path=ecot_path)

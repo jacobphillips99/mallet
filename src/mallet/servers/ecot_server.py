@@ -244,8 +244,8 @@ class ECOTServer:
             self.app,
             host=host,
             port=port,
-            timeout_keep_alive=120,
-            limit_concurrency=2,
+            timeout_keep_alive=60,
+            limit_concurrency=None,
         )
         server = uvicorn.Server(config)
         server.run()

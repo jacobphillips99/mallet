@@ -42,7 +42,7 @@ app = modal.App(
 
 
 @app.function(
-    max_containers=DEFAULT_CONCURRENCY,  # this breaks the rate limits, but fine for now
+    max_containers=DEFAULT_CONCURRENCY,
     timeout=DEFAULT_TIMEOUT,
 )
 @modal.asgi_app()
