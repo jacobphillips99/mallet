@@ -17,16 +17,7 @@ import requests
 from PIL import Image
 from test_utils import AUTO_EVAL_TEST_UTILS
 
-
-def get_url(host: str, port: int, endpoint: str | None = None, protocol: str = "http://") -> str:
-    """
-    Get the URL for a given host and port; if port is negative, skip it.
-    Cleans the host and endpoint strings
-    """
-    host_str = host.replace("http://", "").replace("https://", "")
-    port_str = f":{port}" if int(port) >= 0 else ""
-    endpoint_str = f"/{endpoint.lstrip('/')}" if endpoint else ""
-    return f"{protocol}{host_str}{port_str}{endpoint_str}"
+from mallet.utils import get_url
 
 
 def submit_request(url: str, payload: dict[str, Any]) -> bool:

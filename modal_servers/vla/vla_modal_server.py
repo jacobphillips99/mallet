@@ -18,6 +18,7 @@ from fastapi import FastAPI
 from modal_servers.vla import (
     DEFAULT_CONCURRENCY,
     DEFAULT_GPU,
+    DEFAULT_SCALEDOWN_WINDOW,
     DEFAULT_TIMEOUT,
     GET_VLA_FUNCTIONS,
     HF_CACHE_PATH,
@@ -41,7 +42,7 @@ app = modal.App(
     timeout=DEFAULT_TIMEOUT,
     volumes={HF_CACHE_PATH: HF_CACHE_VOL},
     max_containers=DEFAULT_CONCURRENCY,
-    scaledown_window=60,  # 1 minute scaledown window; more important for GPU servers since we want to avoid short drops since the spin-up cost is high
+    scaledown_window=DEFAULT_SCALEDOWN_WINDOW,
 )
 @modal.asgi_app()
 def serve_vla() -> FastAPI:

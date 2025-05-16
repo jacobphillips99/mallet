@@ -7,7 +7,10 @@ HF_CACHE_PATH = "/cache"
 
 DEFAULT_CONCURRENCY = 10
 DEFAULT_GPU = "A10G"
-DEFAULT_TIMEOUT = 30 * 60
+DEFAULT_TIMEOUT = 30 * 60  # max limit for how long to keep a server alive
+DEFAULT_SCALEDOWN_WINDOW = (
+    60  # how long to wait before scaling down a server with no other requests
+)
 
 DEFAULT_ECOT_PATH = "Embodied-CoT/ecot-openvla-7b-bridge"
 DEFAULT_OPENVLA_PATH = "openvla/openvla-7b"
