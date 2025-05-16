@@ -177,7 +177,10 @@ class ECOTServer:
                     self.device, dtype=torch.bfloat16
                 )
             except Exception as e:
-                raise HTTPException(status_code=400, detail=f"Error processing image: {str(e)}; {traceback.format_exc()}")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Error processing image: {str(e)}; {traceback.format_exc()}",
+                )
 
             action, generated_ids = self.vla.predict_action(
                 **inputs, unnorm_key=unnorm_key, do_sample=False, max_new_tokens=1024
@@ -224,6 +227,11 @@ class ECOTServer:
                 "model": self.ecot_path,
                 "timestamp": datetime.now().isoformat(),
             }
+
+        # Add a reset endpoint
+        @app.post("/reset")
+        async def reset() -> dict[str, Any]:
+            return {"status": "reset successful"}
 
         app.post("/act")(self.predict_action)
         return app

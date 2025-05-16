@@ -7,8 +7,8 @@ Conforms to the `AutoEval` format for robot policy evaluation, which means
 accepting a payload on /act and returning a 7-unit action vector.
 """
 
-from dataclasses import dataclass
 import traceback
+from dataclasses import dataclass
 from typing import Any
 
 import draccus
@@ -28,10 +28,13 @@ def get_url(host: str, port: int, endpoint: str | None = None, protocol: str = "
     endpoint_str = f"/{endpoint.lstrip('/')}" if endpoint else ""
     return f"{protocol}{host_str}{port_str}{endpoint_str}"
 
+
 def submit_request(url: str, payload: dict[str, Any]) -> bool:
     try:
         print("=" * 50)
-        print(f"Sending {payload.get('test', '')} request with instruction: '{payload['instruction']}'")
+        print(
+            f"Sending {payload.get('test', '')} request with instruction: '{payload['instruction']}'"
+        )
         response = requests.post(
             url,
             json=payload,
@@ -40,6 +43,9 @@ def submit_request(url: str, payload: dict[str, Any]) -> bool:
 
         if response.status_code == 200:
             result = response.json()
+            # VLA policies return a list of actions; repackage for consistency
+            if isinstance(result, list):
+                result = {"action": result}
             print("\nServer Response:")
             if payload.get("test"):
                 print(f"Action: {result.get('action')}")
@@ -66,7 +72,7 @@ def test_server(
     host: str,
     port: int,
     test: bool,
-) -> bool:
+) -> None:
     """Test the server with a simple request."""
     url = get_url(host, port, "/act")
     print(f"Testing server at {url}")
@@ -79,7 +85,7 @@ def test_server(
 
     # Create payload
     payload = {
-        "image": image.tolist(), 
+        "image": image.tolist(),
         "instruction": instruction,
         "proprio": proprio,
     }
@@ -90,6 +96,7 @@ def test_server(
         }
         submit_request(url, test_payload)
     submit_request(url, payload)
+
 
 def test_health(host: str, port: int) -> bool:
     """Test the health endpoint."""
@@ -115,9 +122,9 @@ class TestConfig:
     port: int = 8000
     # host: str = "your-app.modal.run"
     # port: int = -1  # Server port for remote testing
-    task: str = "eggplant_in_blue_sink" 
+    task: str = "eggplant_in_blue_sink"
     health_check: bool = True
-    test_check: bool = True # note that VLA servers do not support test requests
+    test_check: bool = True  # note that VLA servers do not support test requests
 
 
 @draccus.wrap()

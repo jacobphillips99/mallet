@@ -23,14 +23,16 @@ from modal_servers.vla import (
     HF_CACHE_PATH,
     HF_CACHE_VOL,
     VLA_MODEL_PATHS,
-    image,
+    get_vla_modal_image,
 )
 
 MODEL = os.environ.get("MODEL", "openvla")
+print(f"Found model: {MODEL}")
+
 APP_NAME = VLA_MODEL_PATHS[MODEL].split("/")[-1].replace("-", "_").replace(".", "_")
 app = modal.App(
     name=APP_NAME,
-    image=image,
+    image=get_vla_modal_image(MODEL=MODEL),
 )
 
 
@@ -43,7 +45,5 @@ app = modal.App(
 )
 @modal.asgi_app()
 def serve_vla() -> FastAPI:
-    # lazy import OpenVLAServer to protect local dev environment from OpenVLA requirements
     server = GET_VLA_FUNCTIONS[MODEL](VLA_MODEL_PATHS[MODEL])
-    # server = get_ecot_server(ecot_path=DEFAULT_ECOT_PATH)
     return server._create_app()

@@ -12,9 +12,10 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, Union
-import numpy as np 
+
 # ruff: noqa: E402
 import json_numpy
+import numpy as np
 import torch
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -104,7 +105,10 @@ class OpenVLAServer:
                     self.device, dtype=torch.bfloat16
                 )
             except Exception as e:
-                raise HTTPException(status_code=400, detail=f"Error processing image: {str(e)}; {traceback.format_exc()}")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Error processing image: {str(e)}; {traceback.format_exc()}",
+                )
 
             action = self.vla.predict_action(**inputs, unnorm_key=unnorm_key, do_sample=False)
             action = list(action)
@@ -149,6 +153,11 @@ class OpenVLAServer:
                 "model": self.openvla_path,
                 "timestamp": datetime.now().isoformat(),
             }
+
+        # Add a reset endpoint
+        @app.post("/reset")
+        async def reset() -> dict[str, Any]:
+            return {"status": "reset successful"}
 
         app.post("/act")(self.predict_action)
         return app
