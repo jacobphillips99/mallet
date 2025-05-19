@@ -241,3 +241,6 @@ If using the MALLET toolkit in your work, please cite it to acknowledge the auth
     date = {insert date of usage},
     year = {2025},
 }
+```
+
+We also thank the authors of [AutoEval](https://github.com/zhouzypaul/auto_eval) and [mse-check](https://github.com/jacobphillips99/mse-check) for their work on providing a platform for running policies on real-world robots. MALLET would not be possible without their work!
