@@ -15,7 +15,7 @@ Imagine a clock face with the workspace in the center:
 - The camera is at 5 o'clock, pointing inward at the workspace
 - The robot and camera are both facing toward the center of the workspace
 
-#0: X axis - Forward/backward movement (forward is 12 o'clock, backward is 6 o'clock. This can also mean foward towards the front (slightly right) wall, or backwards towards the robot body.)
+#0: X axis - Forward/backward movement (forward is 12 o'clock, backward is 6 o'clock. This can also mean forward towards the front (slightly right) wall, or backwards towards the robot body.)
 #1: Y axis - Left/right movement (left is 9 o'clock, right is 3 o'clock. This can also mean left towards the left wall, or right towards the camera.)
 #2: Z axis - Up/down movement (up is above the clock, down is below the clock. This can also mean up towards the ceiling, or down towards the floor.)
 #3: Pitch - Tilt of the gripper (up/down angle)

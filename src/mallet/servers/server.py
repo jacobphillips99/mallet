@@ -6,7 +6,7 @@ Dependencies:
 pip install uvicorn fastapi numpy base64 json
 
 Usage:
-python vlm_policy_server.py --port 8000
+python src/mallet/servers/server.py --port 8000
 
 To make your server accessible on the open web, you can use ngrok or bore.pub
 With ngrok:
@@ -46,6 +46,7 @@ from mallet.models.translation import (
 )
 from mallet.models.vlm import VLM, ImageInput, VLMHistory, VLMInput, VLMRequest, parse_vlm_response
 from mallet.utils.ecot_primitives.inverse_ecot_primitive_movements import text_to_move_vector
+from mallet.utils.history_utils import HISTORY_CHOICES, get_history_inds
 from mallet.utils.robot_utils import GRIPPER_INDEX, GRIPPER_OPEN_THRESHOLD, get_gripper_position
 
 json_numpy.patch()
@@ -105,9 +106,9 @@ class VLMPolicyServer:
                     abs(self.history_choice) <= self.history_length
                 ), f"history_choice {self.history_choice} must be less than or equal to history_length {self.history_length}"
             elif isinstance(self.history_choice, str):
-                assert self.history_choice in [
-                    "all"  # todo more options
-                ], f"history_choice {self.history_choice} must be in ['all']"
+                assert (
+                    self.history_choice in HISTORY_CHOICES
+                ), f"history_choice {self.history_choice} must be in {HISTORY_CHOICES}"
         logger.info(
             f"VLM Policy Server initialized with model: {self.model}{f' and history_length: {self.history_length}' if self.history_length is not None else ''}"
         )
@@ -117,17 +118,12 @@ class VLMPolicyServer:
 
     def setup_history_from_server(self) -> VLMHistory:
         # constructs the VLMHistory object from the server's history
-        assert (
-            self.history_length is not None and self.history is not None
-        ), "history_length must be set if history_flag is True"
-        if isinstance(self.history_choice, int):
-            history_inputs = [self.history[self.history_choice]]
-        elif self.history_choice == "all" or self.history_choice is None:
-            history_inputs = list(self.history)
-        elif isinstance(self.history_choice, list):
-            history_inputs = [self.history[i] for i in self.history_choice]
-        else:
-            raise ValueError(f"Invalid history choice: {self.history_choice}")
+        assert isinstance(
+            self.history_choice, str
+        ), f"history_choice must be a string; got {self.history_choice}"
+        assert isinstance(self.history, deque), f"history must be a deque; got {type(self.history)}"
+        inds = get_history_inds(self.history_choice, len(self.history))
+        history_inputs = [self.history[i] for i in inds]
         logger.info(
             f"Using history choice {self.history_choice} to select {len(history_inputs)} history inputs"
         )
