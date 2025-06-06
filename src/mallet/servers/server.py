@@ -1,20 +1,7 @@
 """
 Lightweight server implementation for VLM-based robot control over REST API.
 This server translates VLM outputs to robot actions using the AutoEval format.
-
-Dependencies:
-pip install uvicorn fastapi numpy base64 json
-
-Usage:
-python src/mallet/servers/server.py --port 8000
-
-To make your server accessible on the open web, you can use ngrok or bore.pub
-With ngrok:
-  ngrok http 8000
-With bore.pub:
-  bore local 8000 --to bore.pub
-
-Note that if you aren't able to resolve bore.pub's DNS (test this with `ping bore.pub`), you can use their actual IP: 159.223.171.199
+Based on https://github.com/zhouzypaul/auto_eval/blob/main/auto_eval/policy_server/template.py.
 """
 
 import asyncio

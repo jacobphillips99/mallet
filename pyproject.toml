@@ -5,12 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mallet"
 version = "0.1.0"
-description = "Cloud-based tools and evaluations for VLMs to control real-world robots"
+description = "Cloud-based tools and benchmarks for VLMs to control real-world robots"
 authors = [
     { name = "Jacob Phillips", email = "jacob.phillips8905@gmail.com" }
 ]
 requires-python = ">=3.10"
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
 
 [tool.ruff]
 line-length = 100
