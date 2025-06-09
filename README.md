@@ -19,6 +19,9 @@ MALLET makes two large contributions to the robotics community:
 
 We use MALLET to evaluate the performance of VLMs on controlling real-world robots in `AutoEval`. We also use MALLET with `mse-check` to evaluate the performance of VLMs in long-context multimodal settings, ablating prompts, history selection, and inference time-cost tradeoffs.
 
+![o4-mini Close Drawer](assets/o4_mini_close_drawer.gif)
+<p align="center"><em>Demonstration of `o4-mini` attempting the task "Close the drawer" in an AutoEval evaluation cell.</em></p>
+
 ## Overview
 - [Installation](#installation)
 - [MALLET Toolkit](#mallet-toolkit)
@@ -173,13 +176,10 @@ Note that GPU-based Modal servers have a longer spin-up time than CPU-based serv
 Paul Zhou's `mse-check` is lightweight dataset of robot trajectories that can be used to evaluate the performance of multimodal policies. The framework was originally designed as a simple check that policies for AutoEval are working as expected, but `mallet` extends it to testing general VLM performance across a variety of variables. We develop a testing framework that allows us to ablate prompt, history, and inference time-cost tradeoffs, and to test the performance of VLMs in long-context multimodal settings. We extend `mse-check` to support parallel, asynchronous policy evaluation, local or remote execution, and develop sophisticated tools for visualizing and analyzing policy performance, including a hyperparameter sweep tool. See the main test script at [`mse-check/eval.py`](https://github.com/jacobphillips99/mallet/blob/main/mse-check/eval.py), the sweep tool at [`mse-check/sweep.py`](https://github.com/jacobphillips99/mallet/blob/main/mse-check/sweep.py), or visualization notebook at [`mse-check/compare_models.ipynb`](https://github.com/jacobphillips99/mallet/blob/main/mse-check/compare_models.ipynb).
 
 ## Evaluation
-Does this work? Unfortuantely, the answer right now is no. We are working on it! Below are a few examples of VLMs controlling real-world robots in the AutoEval framework.
+Does this work? Unfortuantely, the answer right now is no. We are working on it! Below is an example of a VLM controlling real-world robots in the AutoEval setup.
 
 ![Gemini 2.5 Flash Open Drawer](assets/gemini_2_5_flash_open_drawer.gif)
 <p align="center"><em>Demonstration of `gemini-2.5-flash-preview-04-17` attempting the task "Open the drawer" in an AutoEval evaluation cell.</em></p>
-
-![o4-mini Close Drawer](assets/o4_mini_close_drawer.gif)
-<p align="center"><em>Demonstration of `o4-mini` attempting the task "Close the drawer" in an AutoEval evaluation cell.</em></p>
 
 In both cases, the VLM understands the task and is able to make a plan, but struggles with depth perception and perspective to successfully complete the task. Models that specialize in embodied reasoning, like [`Gemini Robotics ER`](https://storage.googleapis.com/deepmind-media/gemini-robotics/gemini_robotics_report.pdf) may perform better on these setups! Since we were unable to find a model that could make progress on these tasks, we use `mse-check` to evaluate the performance of VLMs in long-context multimodal settings.
 
